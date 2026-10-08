@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Command `python3 -m tools.pdf_to_images --pdf <pdf_path> --out-dir <pages_dir> [--dpi 200]` executes successfully.
 - [ ] Uses native `/usr/bin/pdftoppm -png -r 200` via Python standard library `subprocess`.

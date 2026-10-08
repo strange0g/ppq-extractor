@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Command `python3 -m tools.queue_manager scan --source-dir 9709 --queue-file .pipeline/queue.json` discovers all `*_qp_*.pdf` files.
 - [ ] Correctly populates metadata: `syllabus`, `year`, `session`, `component`, `variant`, `total_pages`, `mode` (`compact` vs `write_in`), `expected_marks` (75 for P1/P3, 50 for P2/P4/P5/P6).

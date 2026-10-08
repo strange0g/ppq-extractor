@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: Full-Width Slicing and Composite Stitching Tool, 03: Master Queue Ledger & Pipeline Manager
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `prompts/extractor_agent.md` contains complete instructions for polling the queue, running `tools.pdf_to_images`, prompting the vision LLM, invoking `tools.crop_slices`, assembling `manifest.json`, and committing git state.
 - [ ] `prompts/vision_slicing.md` specifies the normalized $[ymin, 0, ymax, 1000]$ coordinate schema, strictly excises dotted answer lines, and isolates stem preambles from subparts.

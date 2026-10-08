@@ -32,9 +32,17 @@ _Avoid_: Problem, item
 A specific sub-component of a question denoted by letters or roman numerals (e.g., `(a)`, `(b)(i)`), carrying distinct mark allocations.
 _Avoid_: Sub-question, subpart
 
+**Question Preamble Image**:
+An extracted image asset containing the introductory context, formulas, or diagrams of a question preceding the question parts (e.g., `q01_preamble.png`).
+_Avoid_: Stem crop, header snippet
+
 **Question Part Image**:
-An extracted image asset containing an individual Question Part (e.g., `q01_a.png`), including any necessary shared preamble or context diagrams.
+An extracted image asset containing an individual Question Part (e.g., `q01_a.png`), strictly isolating that specific sub-component without prepending the question preamble.
 _Avoid_: Subpart snippet, partial crop
+
+**Question Package**:
+A structured bundle representing a complete question, encapsulating its Question Preamble Image, individual Question Part Images, Composite Question Image, and machine-readable metadata linking parts to the preamble and mark allocations.
+_Avoid_: Question folder, problem bundle
 
 **Composite Question Image**:
 A stitched, unified image asset of an entire question (`q01_full.png`) containing all preamble and Question Parts tightly joined with student answer workspace excised.

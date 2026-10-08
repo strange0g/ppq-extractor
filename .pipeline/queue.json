@@ -23,10 +23,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/11",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_11",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_12",
@@ -41,10 +42,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": 75,
-      "output_dir": "data/extracted/9709/2024_w/12",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_12",
       "extracted_at": "2026-10-08T17:30:25.586213+00:00",
       "verified_at": "2026-10-08T17:30:31.656316+00:00",
-      "verifier_notes": "Verified end-to-end: 75/75 marks, no clipping, no workspace lines"
+      "verifier_notes": "Verified end-to-end: 75/75 marks, no clipping, no workspace lines",
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_13",
@@ -59,10 +61,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/13",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_13",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_21",
@@ -77,10 +80,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/21",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_21",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_22",
@@ -95,10 +99,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/22",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_22",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_23",
@@ -113,10 +118,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/23",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_23",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_31",
@@ -131,10 +137,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/31",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_31",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_32",
@@ -149,10 +156,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/32",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_32",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_33",
@@ -167,10 +175,11 @@
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/33",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_33",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_41",
@@ -185,10 +194,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/41",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_41",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_42",
@@ -203,10 +213,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/42",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_42",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_43",
@@ -221,10 +232,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/43",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_43",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_51",
@@ -239,10 +251,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/51",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_51",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_52",
@@ -257,10 +270,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/52",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_52",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_53",
@@ -275,10 +289,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/53",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_53",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_61",
@@ -293,10 +308,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/61",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_61",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_62",
@@ -311,10 +327,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/62",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_62",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     },
     {
       "id": "9709_w24_qp_63",
@@ -329,10 +346,11 @@
       "mode": "write_in",
       "expected_marks": 50,
       "extracted_marks": null,
-      "output_dir": "data/extracted/9709/2024_w/63",
+      "output_dir": "data/extracted/9709/2024/oct_nov/paper_63",
       "extracted_at": null,
       "verified_at": null,
-      "verifier_notes": null
+      "verifier_notes": null,
+      "session_slug": "oct_nov"
     }
   ]
 }

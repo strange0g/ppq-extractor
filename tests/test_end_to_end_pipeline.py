@@ -342,7 +342,9 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertEqual(paper["mode"], "write_in")
         self.assertEqual(paper["expected_marks"], 75)
         self.assertEqual(paper["total_pages"], 20)
-        self.assertEqual(paper["output_dir"], "data/extracted/9709/2024_w/12")
+        self.assertEqual(
+            paper["output_dir"], "data/extracted/9709/2024/oct_nov/paper_12"
+        )
 
         # -------------------------------------------------------------
         # Step 2: Extractor polls and claims next candidate paper

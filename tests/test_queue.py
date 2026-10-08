@@ -114,13 +114,16 @@ class TestQueueManagerCLI(unittest.TestCase):
         self.assertEqual(p1["syllabus"], "9709")
         self.assertEqual(p1["year"], 2024)
         self.assertEqual(p1["session"], "w")
+        self.assertEqual(p1["session_slug"], "oct_nov")
         self.assertEqual(p1["component"], 1)
         self.assertEqual(p1["variant"], 2)
         self.assertEqual(p1["total_pages"], 20)
         self.assertEqual(p1["mode"], "write_in")
         self.assertEqual(p1["expected_marks"], 75)
         self.assertEqual(p1["status"], "unprocessed")
-        self.assertEqual(p1["output_dir"], "data/extracted/9709/2024_w/12")
+        self.assertEqual(
+            p1["output_dir"], "data/extracted/9709/2024/oct_nov/paper_12"
+        )
 
         # Check P4 2024 (write-in, 50 marks)
         p4 = papers_by_id["9709_w24_qp_42"]
@@ -128,25 +131,38 @@ class TestQueueManagerCLI(unittest.TestCase):
         self.assertEqual(p4["variant"], 2)
         self.assertEqual(p4["expected_marks"], 50)
         self.assertEqual(p4["mode"], "write_in")
+        self.assertEqual(p4["session_slug"], "oct_nov")
+        self.assertEqual(
+            p4["output_dir"], "data/extracted/9709/2024/oct_nov/paper_42"
+        )
 
         # Check P3 2016 (compact, 75 marks)
         p3 = papers_by_id["9709_s16_qp_31"]
         self.assertEqual(p3["year"], 2016)
         self.assertEqual(p3["session"], "s")
+        self.assertEqual(p3["session_slug"], "may_june")
         self.assertEqual(p3["component"], 3)
         self.assertEqual(p3["variant"], 1)
         self.assertEqual(p3["expected_marks"], 75)
         self.assertEqual(p3["total_pages"], 4)
         self.assertEqual(p3["mode"], "compact")
+        self.assertEqual(
+            p3["output_dir"], "data/extracted/9709/2016/may_june/paper_31"
+        )
 
         # Check P6 2001 (compact, 50 marks, single-digit code)
         p6 = papers_by_id["9709_w01_qp_6"]
         self.assertEqual(p6["year"], 2001)
+        self.assertEqual(p6["session"], "w")
+        self.assertEqual(p6["session_slug"], "oct_nov")
         self.assertEqual(p6["component"], 6)
         self.assertIsNone(p6["variant"])
         self.assertEqual(p6["expected_marks"], 50)
         self.assertEqual(p6["total_pages"], 4)
         self.assertEqual(p6["mode"], "compact")
+        self.assertEqual(
+            p6["output_dir"], "data/extracted/9709/2001/oct_nov/paper_6"
+        )
 
     def test_scan_idempotency_preserves_existing_states(self):
         # Initial scan
@@ -333,6 +349,77 @@ class TestQueueManagerCLI(unittest.TestCase):
             "--queue-file", str(non_existent_queue),
         ])
         self.assertNotEqual(res_update.returncode, 0)
+
+    def test_caie_session_slug_mapping(self):
+        from tools.queue_manager import CAIE_SESSION_MAP, get_session_slug
+
+        self.assertEqual(CAIE_SESSION_MAP["m"], "feb_march")
+        self.assertEqual(CAIE_SESSION_MAP["s"], "may_june")
+        self.assertEqual(CAIE_SESSION_MAP["w"], "oct_nov")
+
+        self.assertEqual(get_session_slug("m"), "feb_march")
+        self.assertEqual(get_session_slug("s"), "may_june")
+        self.assertEqual(get_session_slug("w"), "oct_nov")
+        self.assertEqual(get_session_slug("M"), "feb_march")
+        self.assertEqual(get_session_slug("S"), "may_june")
+        self.assertEqual(get_session_slug("W"), "oct_nov")
+
+    def test_caie_output_dir_taxonomy(self):
+        from tools.queue_manager import get_paper_output_dir
+
+        self.assertEqual(
+            get_paper_output_dir("9709", 2024, "w", "12"),
+            "data/extracted/9709/2024/oct_nov/paper_12",
+        )
+        self.assertEqual(
+            get_paper_output_dir("9709", 2016, "s", "31"),
+            "data/extracted/9709/2016/may_june/paper_31",
+        )
+        self.assertEqual(
+            get_paper_output_dir("9709", 2001, "w", "6"),
+            "data/extracted/9709/2001/oct_nov/paper_6",
+        )
+        self.assertEqual(
+            get_paper_output_dir("9709", 2022, "m", "12"),
+            "data/extracted/9709/2022/feb_march/paper_12",
+        )
+
+    def test_parse_paper_metadata_taxonomy(self):
+        from tools.queue_manager import parse_paper_metadata
+
+        # March series test
+        march_pdf = self.source_dir / "2022" / "9709_m22_qp_12.pdf"
+        meta_m = parse_paper_metadata(march_pdf, self.source_dir, total_pages=16)
+        self.assertIsNotNone(meta_m)
+        self.assertEqual(meta_m["session"], "m")
+        self.assertEqual(meta_m["session_slug"], "feb_march")
+        self.assertEqual(
+            meta_m["output_dir"],
+            "data/extracted/9709/2022/feb_march/paper_12",
+        )
+
+        # Single digit paper code test
+        p6_pdf = self.source_dir / "2001" / "9709_w01_qp_6.pdf"
+        meta_p6 = parse_paper_metadata(p6_pdf, self.source_dir, total_pages=4)
+        self.assertIsNotNone(meta_p6)
+        self.assertEqual(
+            meta_p6["output_dir"],
+            "data/extracted/9709/2001/oct_nov/paper_6",
+        )
+
+    def test_show_command(self):
+        self.run_cli(["scan", "--source-dir", str(self.source_dir), "--queue-file", str(self.queue_file)])
+
+        # Show existing paper
+        res = self.run_cli(["show", "--id", "9709_w24_qp_12", "--queue-file", str(self.queue_file)])
+        self.assertEqual(res.returncode, 0)
+        paper = json.loads(res.stdout)
+        self.assertEqual(paper["id"], "9709_w24_qp_12")
+        self.assertEqual(paper["output_dir"], "data/extracted/9709/2024/oct_nov/paper_12")
+
+        # Show non-existent paper
+        res_err = self.run_cli(["show", "--id", "non_existent", "--queue-file", str(self.queue_file)])
+        self.assertNotEqual(res_err.returncode, 0)
 
 
 if __name__ == "__main__":

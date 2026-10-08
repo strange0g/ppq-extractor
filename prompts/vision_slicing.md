@@ -31,7 +31,7 @@ Analyze this page image and identify all question components, their question par
    - Do NOT include top page numbers, barcodes, or "DO NOT WRITE IN THIS MARGIN" borders.
    - Do NOT include bottom session codes (e.g., `9709/12/M/J/24`), copyright notices (e.g., `UCLES 2024`), or `[Turn over` tags.
 
-4. **Isolate Stem Preambles from Question Parts (Question Package Expectations)**:
+4. **Isolate Question Preambles from Question Parts (Question Package Expectations)**:
    - Slices feed directly into two-tier Question Packages (`questions/q{NN}/`), where preambles and question parts are stored in decoupled assets.
    - If a question begins with introductory context, formulas, or diagrams before the first question part (e.g. part `(a)`), classify it as a `"preamble"` slice (`"kind": "preamble"`, `"marks": 0`).
    - Downstream tools extract preambles to a standalone `preamble.png` and question parts to isolated `part_{label}.png` images without prepending the preamble. Do NOT merge the preamble into part `(a)`.

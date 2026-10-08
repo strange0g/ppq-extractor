@@ -59,9 +59,10 @@ class TestPromptsAndGuidelines(unittest.TestCase):
             "dotted" in content.lower() or "ruled" in content.lower() or "answer workspace" in content.lower(),
             "Prompt must mention excising dotted/ruled answer workspace lines"
         )
-        # Must isolate preambles from subparts
+        # Must isolate preambles from question parts
         self.assertIn("preamble", content.lower())
         self.assertTrue("subpart" in content.lower() or "part" in content.lower())
+        self.assertIn("Isolate Question Preambles from Question Parts", content)
         # Must mandate question number invariant and upward safety buffer (at least 15 units / px)
         self.assertTrue(
             "question 1" in content.lower() or "question number" in content.lower() or "numeral" in content.lower(),
@@ -115,6 +116,8 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         self.assertTrue("repair" in content.lower() or "crop_slices" in content)
         # Updating queue status to verified or needs_rework
         self.assertIn("verified", content)
+        self.assertNotIn('"approved"', content)
+        self.assertNotIn("subpart", content.lower())
         self.assertIn("needs_rework", content)
         self.assertIn("queue_manager update", content)
         # Git commit convention
@@ -161,6 +164,7 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         self.assertIn("pdf_to_images", content)
         self.assertIn("crop_slices", content)
         self.assertIn("queue_manager", content)
+        self.assertIn("queue_manager show --id", content)
 
         # Conventional commits
         self.assertIn("feat(extractor):", content)

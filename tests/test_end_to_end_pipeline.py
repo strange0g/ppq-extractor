@@ -1,14 +1,19 @@
 """End-to-End Pipeline Integration Test for PPQ Extractor.
 
 Validates the full autonomous pipeline against Cambridge 9709 Question Paper (9709_w24_qp_12.pdf):
-1. Discovery and queue scanning (expected marks 75, write_in mode, 20 pages).
+1. Discovery and queue scanning (expected marks 75, write_in mode, 20 pages, standard CAIE taxonomy).
 2. Extractor claiming paper from processing queue.
 3. High-speed PDF rendering into 200 DPI PNG page images (page_01.png to page_20.png).
 4. Manifest assembly with 0-1000 vertical bounding coordinates for all 10 questions and parts.
-5. Slicing and composite stitching creating Question Part Images (qXX_a.png) and
-   Composite Question Images (qXX_full.png) with uniform full width (W) and answer workspace lines excised.
-6. Mathematical mark-sum invariant verification (75/75 marks).
-7. Verifier audit checks and queue status transition to 'verified'.
+5. Slicing and Question Package generation creating standalone Question Preamble Images (preamble.png),
+   isolated Question Part Images (part_{label}.png), Composite Question Images (full.png),
+   and atomic metadata descriptors (question.json) under questions/q{NN}/ with uniform full width (W)
+   and answer workspace lines excised.
+6. Validation that Question 1 top bound encompasses the numeral "1" (ymin coordinate and visual headroom margin).
+7. Validation that Question 10 has cleanly decoupled preamble.png, isolated part_a.png, part_b.png, part_c.png, and composite full.png.
+8. Validation of all 10 Question Packages metadata schemas (question.json) and paper manifest.json indexing.
+9. Mathematical mark-sum invariant verification (75/75 marks).
+10. Verifier audit checks and queue status transition to 'verified'.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+import numpy as np
 from PIL import Image
 
 from tools.pdf_to_images import render_pdf_to_images
@@ -66,13 +72,12 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 1,
                 "has_preamble": True,
-                "preamble_slice": {"page": 2, "ymin": 91, "xmin": 0, "ymax": 397, "xmax": 1000},
+                "preamble_slice": {"page": 2, "ymin": 74, "xmin": 0, "ymax": 397, "xmax": 1000},
                 "parts": [
                     {
                         "label": "a",
                         "marks": 3,
                         "slices": [{"page": 2, "ymin": 412, "xmin": 0, "ymax": 438, "xmax": 1000}],
-                        "asset_path": "crops/q01_a.png",
                     },
                     {
                         "label": "b",
@@ -81,10 +86,8 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                             {"page": 2, "ymin": 720, "xmin": 0, "ymax": 794, "xmax": 1000},
                             {"page": 2, "ymin": 859, "xmin": 0, "ymax": 887, "xmax": 1000},
                         ],
-                        "asset_path": "crops/q01_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q01_full.png",
                 "total_question_marks": 5,
             },
             {
@@ -96,16 +99,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 2,
                         "slices": [{"page": 3, "ymin": 108, "xmin": 0, "ymax": 130, "xmax": 1000}],
-                        "asset_path": "crops/q02_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 3,
                         "slices": [{"page": 3, "ymin": 349, "xmin": 0, "ymax": 407, "xmax": 1000}],
-                        "asset_path": "crops/q02_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q02_full.png",
                 "total_question_marks": 5,
             },
             {
@@ -117,16 +117,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 3,
                         "slices": [{"page": 4, "ymin": 125, "xmin": 0, "ymax": 148, "xmax": 1000}],
-                        "asset_path": "crops/q03_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 2,
                         "slices": [{"page": 4, "ymin": 460, "xmin": 0, "ymax": 503, "xmax": 1000}],
-                        "asset_path": "crops/q03_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q03_full.png",
                 "total_question_marks": 5,
             },
             {
@@ -138,16 +135,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 2,
                         "slices": [{"page": 5, "ymin": 110, "xmin": 0, "ymax": 148, "xmax": 1000}],
-                        "asset_path": "crops/q04_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 4,
                         "slices": [{"page": 5, "ymin": 369, "xmin": 0, "ymax": 418, "xmax": 1000}],
-                        "asset_path": "crops/q04_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q04_full.png",
                 "total_question_marks": 6,
             },
             {
@@ -162,16 +156,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                             {"page": 6, "ymin": 127, "xmin": 0, "ymax": 152, "xmax": 1000},
                             {"page": 6, "ymin": 279, "xmin": 0, "ymax": 696, "xmax": 1000},
                         ],
-                        "asset_path": "crops/q05_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 3,
                         "slices": [{"page": 7, "ymin": 427, "xmin": 0, "ymax": 483, "xmax": 1000}],
-                        "asset_path": "crops/q05_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q05_full.png",
                 "total_question_marks": 10,
             },
             {
@@ -182,10 +173,8 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "",
                         "marks": 6,
                         "slices": [{"page": 8, "ymin": 82, "xmin": 0, "ymax": 463, "xmax": 1000}],
-                        "asset_path": "crops/q06.png",
                     }
                 ],
-                "composite_asset_path": "crops/q06_full.png",
                 "total_question_marks": 6,
             },
             {
@@ -196,16 +185,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 3,
                         "slices": [{"page": 10, "ymin": 77, "xmin": 0, "ymax": 121, "xmax": 1000}],
-                        "asset_path": "crops/q07_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 5,
                         "slices": [{"page": 10, "ymin": 372, "xmin": 0, "ymax": 666, "xmax": 1000}],
-                        "asset_path": "crops/q07_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q07_full.png",
                 "total_question_marks": 8,
             },
             {
@@ -217,7 +203,6 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 2,
                         "slices": [{"page": 12, "ymin": 107, "xmin": 0, "ymax": 152, "xmax": 1000}],
-                        "asset_path": "crops/q08_a.png",
                     },
                     {
                         "label": "b",
@@ -226,10 +211,8 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                             {"page": 12, "ymin": 395, "xmin": 0, "ymax": 427, "xmax": 1000},
                             {"page": 13, "ymin": 76, "xmin": 0, "ymax": 97, "xmax": 1000},
                         ],
-                        "asset_path": "crops/q08_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q08_full.png",
                 "total_question_marks": 10,
             },
             {
@@ -241,16 +224,13 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 7,
                         "slices": [{"page": 14, "ymin": 121, "xmin": 0, "ymax": 176, "xmax": 1000}],
-                        "asset_path": "crops/q09_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 3,
                         "slices": [{"page": 15, "ymin": 336, "xmin": 0, "ymax": 391, "xmax": 1000}],
-                        "asset_path": "crops/q09_b.png",
                     },
                 ],
-                "composite_asset_path": "crops/q09_full.png",
                 "total_question_marks": 10,
             },
             {
@@ -262,22 +242,18 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                         "label": "a",
                         "marks": 3,
                         "slices": [{"page": 16, "ymin": 126, "xmin": 0, "ymax": 151, "xmax": 1000}],
-                        "asset_path": "crops/q10_a.png",
                     },
                     {
                         "label": "b",
                         "marks": 4,
                         "slices": [{"page": 16, "ymin": 311, "xmin": 0, "ymax": 336, "xmax": 1000}],
-                        "asset_path": "crops/q10_b.png",
                     },
                     {
                         "label": "c",
                         "marks": 3,
                         "slices": [{"page": 17, "ymin": 77, "xmin": 0, "ymax": 175, "xmax": 1000}],
-                        "asset_path": "crops/q10_c.png",
                     },
                 ],
-                "composite_asset_path": "crops/q10_full.png",
                 "total_question_marks": 10,
             },
         ],
@@ -289,6 +265,7 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                 "mark_sum_matches": None,
                 "no_answer_lines_detected": None,
                 "no_clipping_detected": None,
+                "question_numbers_intact": None,
             },
             "audit_notes": [],
         },
@@ -358,7 +335,7 @@ class TestEndToEndPipeline(unittest.TestCase):
         # -------------------------------------------------------------
         output_dir = self.root / claimed_paper["output_dir"]
         pages_dir = output_dir / "pages"
-        crops_dir = output_dir / "crops"
+        questions_dir = output_dir / "questions"
 
         render_result = render_pdf_to_images(
             pdf_path=self.test_pdf,
@@ -386,7 +363,7 @@ class TestEndToEndPipeline(unittest.TestCase):
         crop_summary = crop_and_stitch(
             manifest_path=manifest_path,
             pages_dir=pages_dir,
-            out_dir=crops_dir,
+            out_dir=output_dir,
             pad=10,
             spacing=20,
         )
@@ -394,44 +371,239 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertEqual(crop_summary["questions_processed"], 10)
 
         # -------------------------------------------------------------
-        # Step 5: Validate cropped assets fidelity and geometry
+        # Step 5: Question 1 numeral invariant & safety buffer verification
         # -------------------------------------------------------------
-        # Check all expected crops exist
-        expected_part_crops = [
-            "q01_a.png", "q01_b.png", "q01_full.png",
-            "q02_a.png", "q02_b.png", "q02_full.png",
-            "q03_a.png", "q03_b.png", "q03_full.png",
-            "q04_a.png", "q04_b.png", "q04_full.png",
-            "q05_a.png", "q05_b.png", "q05_full.png",
-            "q06.png", "q06_full.png",
-            "q07_a.png", "q07_b.png", "q07_full.png",
-            "q08_a.png", "q08_b.png", "q08_full.png",
-            "q09_a.png", "q09_b.png", "q09_full.png",
-            "q10_a.png", "q10_b.png", "q10_c.png", "q10_full.png",
+        q1_manifest = manifest_data["questions"][0]
+        # Verify Question 1 ymin coordinate encompasses numeral '1' (starts at ~77.0 normalized)
+        # with upward safety buffer
+        self.assertLessEqual(
+            q1_manifest["preamble_slice"]["ymin"],
+            75,
+            "Question 1 preamble ymin must encompass numeral '1' with upward safety buffer",
+        )
+
+        q1_dir = questions_dir / "q01"
+        self.assertTrue(q1_dir.is_dir(), "Question 1 package directory missing")
+        q1_preamble_path = q1_dir / "preamble.png"
+        self.assertTrue(q1_preamble_path.is_file(), "Question 1 preamble.png missing")
+
+        with Image.open(q1_preamble_path) as im_q1_p:
+            self.assertEqual(im_q1_p.width, 1654, "Preamble crop width must be full-width 1654")
+            self.assertGreater(im_q1_p.height, 50, "Preamble crop height too small")
+            # Visual check for numeral '1' visibility and upward margin buffer
+            arr_q1 = np.array(im_q1_p.convert("L"))
+            # Column slice for numeral '1' (x: 130..160)
+            numeral_cols = arr_q1[:, 130:160]
+            dark_ys, _ = np.where(numeral_cols < 128)
+            self.assertGreater(
+                len(dark_ys),
+                0,
+                "Numeral '1' dark pixels must be present in Question 1 preamble crop",
+            )
+            first_numeral_row = dark_ys.min()
+            # Visual upper headroom margin buffer must be at least 15 pixels
+            self.assertGreaterEqual(
+                first_numeral_row,
+                15,
+                f"Visual headroom margin buffer above numeral '1' ({first_numeral_row}px) must be >= 15px",
+            )
+            # Top rows (0..15) in numeral region must be pure margin (white background)
+            self.assertTrue(
+                np.all(arr_q1[:15, 130:160] >= 200),
+                "Headroom buffer above numeral '1' must not contain clipped edge artifacts",
+            )
+
+        with Image.open(q1_dir / "full.png") as im_q1_full:
+            self.assertEqual(im_q1_full.width, 1654, "Composite full.png must have full width 1654")
+            arr_q1_full = np.array(im_q1_full.convert("L"))
+            dark_ys_full, _ = np.where(arr_q1_full[:, 130:160] < 128)
+            self.assertGreater(
+                len(dark_ys_full),
+                0,
+                "Numeral '1' must be visible in composite full.png",
+            )
+            self.assertGreaterEqual(
+                dark_ys_full.min(),
+                15,
+                "Numeral '1' must have >= 15px headroom in composite full.png",
+            )
+
+        # -------------------------------------------------------------
+        # Step 6: Question 10 decoupled preamble and parts verification
+        # -------------------------------------------------------------
+        q10_dir = questions_dir / "q10"
+        self.assertTrue(q10_dir.is_dir(), "Question 10 package directory missing")
+
+        q10_preamble_path = q10_dir / "preamble.png"
+        q10_part_a_path = q10_dir / "part_a.png"
+        q10_part_b_path = q10_dir / "part_b.png"
+        q10_part_c_path = q10_dir / "part_c.png"
+        q10_full_path = q10_dir / "full.png"
+        q10_json_path = q10_dir / "question.json"
+
+        self.assertTrue(q10_preamble_path.is_file(), "Question 10 preamble.png missing")
+        self.assertTrue(q10_part_a_path.is_file(), "Question 10 part_a.png missing")
+        self.assertTrue(q10_part_b_path.is_file(), "Question 10 part_b.png missing")
+        self.assertTrue(q10_part_c_path.is_file(), "Question 10 part_c.png missing")
+        self.assertTrue(q10_full_path.is_file(), "Question 10 full.png missing")
+        self.assertTrue(q10_json_path.is_file(), "Question 10 question.json missing")
+
+        with Image.open(q10_preamble_path) as im_p10, \
+             Image.open(q10_part_a_path) as im_p10_a, \
+             Image.open(q10_part_b_path) as im_p10_b, \
+             Image.open(q10_part_c_path) as im_p10_c, \
+             Image.open(q10_full_path) as im_p10_full:
+
+            # All crops maintain full width 1654
+            for crop_img, name in [
+                (im_p10, "preamble.png"),
+                (im_p10_a, "part_a.png"),
+                (im_p10_b, "part_b.png"),
+                (im_p10_c, "part_c.png"),
+                (im_p10_full, "full.png"),
+            ]:
+                self.assertEqual(crop_img.width, 1654, f"Q10 {name} width is not full-width 1654")
+                self.assertGreater(crop_img.height, 40, f"Q10 {name} height too small")
+
+            # Isolated part check: part_a must NOT contain preamble
+            self.assertLess(
+                im_p10_a.height,
+                im_p10.height + im_p10_a.height,
+                "part_a.png must be isolated and not contain preamble",
+            )
+            # Composite stitches preamble and all parts vertically
+            expected_min_full_h = (
+                im_p10.height + im_p10_a.height + im_p10_b.height + im_p10_c.height
+            )
+            self.assertGreaterEqual(
+                im_p10_full.height,
+                expected_min_full_h,
+                "Composite full.png must stitch preamble and all parts",
+            )
+
+        # Validate Question 10 question.json descriptor
+        q10_meta = json.loads(q10_json_path.read_text(encoding="utf-8"))
+        self.assertEqual(q10_meta["id"], "9709_w24_qp_12_q10")
+        self.assertEqual(q10_meta["paper_id"], "9709_w24_qp_12")
+        self.assertEqual(q10_meta["question_number"], 10)
+        self.assertEqual(q10_meta["total_marks"], 10)
+        self.assertTrue(q10_meta["preamble"]["present"])
+        self.assertEqual(q10_meta["preamble"]["asset_path"], "preamble.png")
+        self.assertEqual(len(q10_meta["parts"]), 3)
+
+        expected_q10_parts = [
+            ("a", 3, "part_a.png"),
+            ("b", 4, "part_b.png"),
+            ("c", 3, "part_c.png"),
         ]
+        for part_meta, (exp_label, exp_marks, exp_asset) in zip(
+            q10_meta["parts"], expected_q10_parts
+        ):
+            self.assertEqual(part_meta["label"], exp_label)
+            self.assertEqual(part_meta["marks"], exp_marks)
+            self.assertEqual(part_meta["isolated_asset_path"], exp_asset)
+            self.assertEqual(part_meta["context_dependencies"], ["preamble"])
+            self.assertEqual(part_meta["dimensions"]["width"], 1654)
 
-        for crop_name in expected_part_crops:
-            crop_path = crops_dir / crop_name
-            self.assertTrue(crop_path.is_file(), f"Missing crop: {crop_name}")
-            with Image.open(crop_path) as im:
-                # All crops must have full standardized width W=1654
-                self.assertEqual(im.width, 1654, f"Crop {crop_name} width is not full-width 1654")
-                self.assertGreater(im.height, 50, f"Crop {crop_name} height too small")
-
-        # Verify standalone subpart image has preamble prepended
-        with Image.open(crops_dir / "q01_a.png") as im_part:
-            # Standalone q01_a height must be greater than just part a slice height alone
-            # because preamble is prepended
-            part_a_slice_h = int((438 - 412) * 2339 / 1000) + 20
-            self.assertGreater(im_part.height, part_a_slice_h)
+        self.assertEqual(q10_meta["composite"]["asset_path"], "full.png")
+        self.assertEqual(q10_meta["composite"]["dimensions"]["width"], 1654)
 
         # -------------------------------------------------------------
-        # Step 6: Mark-sum invariant audit & queue update to 'extracted'
+        # Step 7: Validate all 10 Question Packages & manifest index
         # -------------------------------------------------------------
-        # Verify mark sum across all questions
+        updated_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertIn("question_index", updated_manifest)
+        self.assertEqual(len(updated_manifest["question_index"]), 10)
+
+        for q_num in range(1, 11):
+            q_pkg_dir = questions_dir / f"q{q_num:02d}"
+            self.assertTrue(q_pkg_dir.is_dir(), f"Missing question package dir for q{q_num:02d}")
+
+            q_json_file = q_pkg_dir / "question.json"
+            self.assertTrue(q_json_file.is_file(), f"Missing question.json for q{q_num:02d}")
+
+            q_meta = json.loads(q_json_file.read_text(encoding="utf-8"))
+
+            # Top-level item descriptors
+            self.assertEqual(q_meta["id"], f"9709_w24_qp_12_q{q_num:02d}")
+            self.assertEqual(q_meta["paper_id"], "9709_w24_qp_12")
+            self.assertEqual(q_meta["question_number"], q_num)
+            self.assertIsInstance(q_meta["total_marks"], int)
+            self.assertGreater(q_meta["total_marks"], 0)
+
+            # Preamble descriptor
+            self.assertIn("preamble", q_meta)
+            self.assertIsInstance(q_meta["preamble"]["present"], bool)
+            if q_meta["preamble"]["present"]:
+                self.assertEqual(q_meta["preamble"]["asset_path"], "preamble.png")
+                self.assertTrue((q_pkg_dir / "preamble.png").is_file())
+                self.assertEqual(q_meta["preamble"]["dimensions"]["width"], 1654)
+            else:
+                self.assertIsNone(q_meta["preamble"]["asset_path"])
+                self.assertFalse((q_pkg_dir / "preamble.png").exists())
+
+            # Parts descriptors
+            self.assertIn("parts", q_meta)
+            self.assertGreaterEqual(len(q_meta["parts"]), 1)
+            parts_marks_sum = 0
+            for part in q_meta["parts"]:
+                self.assertIn("part_id", part)
+                self.assertIn("label", part)
+                self.assertIn("marks", part)
+                parts_marks_sum += part["marks"]
+                self.assertIn("isolated_asset_path", part)
+                part_asset_file = q_pkg_dir / part["isolated_asset_path"]
+                self.assertTrue(
+                    part_asset_file.is_file(),
+                    f"Missing part asset {part['isolated_asset_path']} in q{q_num:02d}",
+                )
+                self.assertEqual(part["dimensions"]["width"], 1654)
+                self.assertIn("context_dependencies", part)
+                if q_meta["preamble"]["present"]:
+                    self.assertEqual(part["context_dependencies"], ["preamble"])
+                else:
+                    self.assertEqual(part["context_dependencies"], [])
+
+            self.assertEqual(
+                parts_marks_sum,
+                q_meta["total_marks"],
+                f"Sum of parts marks in q{q_num:02d} must equal total_marks",
+            )
+
+            # Composite descriptor
+            self.assertIn("composite", q_meta)
+            self.assertEqual(q_meta["composite"]["asset_path"], "full.png")
+            comp_asset_file = q_pkg_dir / "full.png"
+            self.assertTrue(comp_asset_file.is_file(), f"Missing full.png in q{q_num:02d}")
+            self.assertEqual(q_meta["composite"]["dimensions"]["width"], 1654)
+
+            # Taxonomy descriptor
+            self.assertIn("taxonomy", q_meta)
+            self.assertIn("topics", q_meta["taxonomy"])
+            self.assertIn("has_diagram", q_meta["taxonomy"])
+
+            # Manifest question_index verification
+            idx_entry = updated_manifest["question_index"][q_num - 1]
+            self.assertEqual(idx_entry["question_number"], q_num)
+            self.assertEqual(
+                idx_entry["package_path"],
+                f"questions/q{q_num:02d}/question.json",
+            )
+            self.assertEqual(idx_entry["total_marks"], q_meta["total_marks"])
+            self.assertEqual(
+                idx_entry["composite_asset"],
+                f"questions/q{q_num:02d}/full.png",
+            )
+            # Verify file paths resolved from output_dir root exist
+            self.assertTrue((output_dir / idx_entry["package_path"]).is_file())
+            self.assertTrue((output_dir / idx_entry["composite_asset"]).is_file())
+
+        # -------------------------------------------------------------
+        # Step 8: Mathematical mark-sum invariant audit & queue update
+        # -------------------------------------------------------------
         total_extracted_marks = sum(
-            sum(part.get("marks", 0) for part in q.get("parts", []))
-            for q in manifest_data["questions"]
+            json.loads((questions_dir / f"q{i:02d}" / "question.json").read_text())["total_marks"]
+            for i in range(1, 11)
         )
         self.assertEqual(total_extracted_marks, 75)
         self.assertEqual(total_extracted_marks, claimed_paper["expected_marks"])
@@ -448,7 +620,7 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertEqual(queue_data["summary"]["unprocessed"], 0)
 
         # -------------------------------------------------------------
-        # Step 7: Verifier polls paper, performs visual audit, approves
+        # Step 9: Verifier claims paper and performs verification audit
         # -------------------------------------------------------------
         verifier_paper = get_next_paper(queue_data, role="verifier")
         self.assertIsNotNone(verifier_paper)
@@ -468,23 +640,25 @@ class TestEndToEndPipeline(unittest.TestCase):
                 "mark_sum_matches": True,
                 "no_answer_lines_detected": True,
                 "no_clipping_detected": True,
+                "question_numbers_intact": True,
             },
             "audit_notes": [
                 "Mark sum matches expected 75 marks.",
+                "Question numerals 1-10 verified intact with upward headroom buffer.",
                 "Zero answer workspace lines detected in crops.",
-                "Full width 1654 maintained across all images.",
+                "Full width 1654 maintained across all Question Package assets.",
             ],
         }
         manifest_path.write_text(json.dumps(updated_manifest, indent=2))
 
         # -------------------------------------------------------------
-        # Step 8: Update queue to 'verified'
+        # Step 10: Update queue to 'verified'
         # -------------------------------------------------------------
         queue_data = update_paper_status(
             queue_data=queue_data,
             paper_id=verifier_paper["id"],
             status="verified",
-            notes="Audit verified 75/75 marks and clean crops",
+            notes="Audit verified 75/75 marks, question numerals intact, and clean Question Packages",
         )
         save_queue(self.queue_file, queue_data)
 

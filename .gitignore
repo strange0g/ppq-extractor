@@ -17,3 +17,8 @@ __pycache__/
 # Local environment variables
 .env
 .env.local
+
+# Git worktrees and local data
+.worktrees/
+data/
+.pipeline/

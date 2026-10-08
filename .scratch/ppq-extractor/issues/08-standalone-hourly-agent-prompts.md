@@ -4,9 +4,9 @@
 
 **Blocked by:** 07: Two-Tier Question Package Slicing Engine
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `prompts/vision_slicing.md` mandates that `ymin` must start above top-level question numerals, including an upward safety buffer to prevent clipping question headings.
-- [ ] `prompts/extractor_agent.md` defines the agent as the direct multimodal LLM operating in an isolated hourly run, performing layout analysis, invoking `tools.crop_slices` to generate Question Packages, and committing assets.
-- [ ] `prompts/verifier_agent.md` defines the audit and self-repair procedures for the subsequent hourly run, checking mark sums, reconciling question numbers and subparts, validating `question.json` descriptors, and updating queue status.
-- [ ] Unit tests in `tests/test_prompts_and_guidelines.md` or prompt integrity checks validate adherence to `GLOSSARY.md` and updated operational steps.
+- [x] `prompts/vision_slicing.md` mandates that `ymin` must start above top-level question numerals, including an upward safety buffer to prevent clipping question headings.
+- [x] `prompts/extractor_agent.md` defines the agent as the direct multimodal LLM operating in an isolated hourly run, performing layout analysis, invoking `tools.crop_slices` to generate Question Packages, and committing assets.
+- [x] `prompts/verifier_agent.md` defines the audit and self-repair procedures for the subsequent hourly run, checking mark sums, reconciling question numbers and subparts, validating `question.json` descriptors, and updating queue status.
+- [x] Unit tests in `tests/test_prompts_and_guidelines.md` or prompt integrity checks validate adherence to `GLOSSARY.md` and updated operational steps.

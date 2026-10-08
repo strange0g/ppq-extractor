@@ -95,9 +95,9 @@ class TestCropSlices(unittest.TestCase):
         self.assertEqual(y1, 1790)
         self.assertEqual(y2, 2000)
 
-        # Force full width regardless of xmin/xmax
+        # Force full width x1=0, x2=page_width
         x1, y1, x2, y2 = translate_coordinates(
-            ymin=100, ymax=200, page_width=1654, page_height=2339, pad=10, xmin=150, xmax=850
+            ymin=100, ymax=200, page_width=1654, page_height=2339, pad=10
         )
         self.assertEqual(x1, 0)
         self.assertEqual(x2, 1654)
@@ -519,6 +519,50 @@ class TestCropSlices(unittest.TestCase):
         self.assertEqual(updated["questions"][0]["composite_asset_path"], "crops/q01_full.png")
         self.assertEqual(updated["questions"][1]["parts"][0]["asset_path"], "crops/q02_a.png")
         self.assertEqual(updated["questions"][1]["composite_asset_path"], "crops/q02_full.png")
+
+    def test_multi_slice_preamble_and_standalone_whole_question(self):
+        """Test handling of multi-slice preambles and standalone whole questions."""
+        manifest_data = {
+            "paper_id": "9709_w24_qp_12",
+            "questions": [
+                {
+                    "number": 1,
+                    "has_preamble": True,
+                    "preamble_slices": [
+                        {"page": 1, "box_1000": [100, 0, 200, 1000]},
+                        {"page": 2, "box_1000": [100, 0, 150, 1000]},
+                    ],
+                    "parts": [
+                        {
+                            "label": "(a)",
+                            "slices": [
+                                {"page": 2, "box_1000": [200, 0, 300, 1000]}
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "number": 2,
+                    "kind": "whole",
+                    "page": 2,
+                    "box_1000": [400, 0, 600, 1000],
+                    "marks": 6,
+                },
+            ],
+        }
+        manifest_file = self.root / "manifest_multi.json"
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+
+        result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        self.assertEqual(result["status"], "success")
+
+        # Q1 has standalone part a and composite
+        self.assertTrue((self.crops_dir / "q01_a.png").is_file())
+        self.assertTrue((self.crops_dir / "q01_full.png").is_file())
+
+        # Q2 has standalone whole question q02.png and composite q02_full.png
+        self.assertTrue((self.crops_dir / "q02.png").is_file())
+        self.assertTrue((self.crops_dir / "q02_full.png").is_file())
 
 
 if __name__ == "__main__":

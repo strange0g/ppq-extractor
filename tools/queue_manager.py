@@ -20,44 +20,14 @@ import subprocess
 import sys
 from typing import Any
 
+from tools.pdf_utils import get_pdf_page_count
+
 SCHEMA_URL = "https://json-schema.org/draft/2020-12/schema"
 QUEUE_VERSION = "1.0"
 VALID_STATUSES = {"unprocessed", "extracted", "verified", "needs_rework"}
 QP_FILENAME_PATTERN = re.compile(
     r"^([a-zA-Z0-9]+)_([a-zA-Z]+)(\d{2})_qp_(\d+)\.pdf$"
 )
-
-
-def get_pdf_page_count(pdf_path: str | Path) -> int:
-    """Extract total page count from PDF using pdfinfo with binary fallback."""
-    pdf_path_str = str(pdf_path)
-    try:
-        proc = subprocess.run(
-            ["pdfinfo", pdf_path_str],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        for line in proc.stdout.splitlines():
-            if line.startswith("Pages:"):
-                return int(line.split(":", 1)[1].strip())
-    except Exception:
-        pass
-
-    # Fallback to binary inspection of /Count in PDF
-    try:
-        with open(pdf_path_str, "rb") as f:
-            content = f.read()
-        matches = re.findall(rb"/Type\s*/Pages.*?/Count\s+(\d+)", content, re.DOTALL)
-        if matches:
-            return int(matches[-1])
-        matches = re.findall(rb"/Count\s+(\d+)", content)
-        if matches:
-            return max(int(m) for m in matches)
-    except Exception:
-        pass
-
-    return 0
 
 
 def determine_mode(total_pages: int, year: int) -> str:
@@ -67,9 +37,53 @@ def determine_mode(total_pages: int, year: int) -> str:
     return "write_in"
 
 
-def determine_expected_marks(component: int) -> int:
-    """Expected marks: 75 for P1/P3, 50 for P2/P4/P5/P6/P7."""
-    if component in (1, 3):
+def determine_expected_marks(
+    syllabus: str | int,
+    component: int | None = None,
+) -> int:
+    """Determine expected total marks for a paper given its syllabus and component.
+
+    For syllabus 9709 (Cambridge International AS & A Level Mathematics):
+      - Component 1 (Pure Mathematics 1): 75 marks
+      - Component 3 (Pure Mathematics 3): 75 marks
+      - Component 2 (Pure Mathematics 2): 50 marks
+      - Component 4 (Mechanics): 50 marks
+      - Component 5 (Probability & Statistics 1): 50 marks
+      - Component 6 (Probability & Statistics 2): 50 marks
+      - Component 7 (historical Statistics 2): 50 marks
+
+    For other/unspecified syllabuses, provides extensible component-based defaults.
+    """
+    if component is None and isinstance(syllabus, int):
+        # Backward-compatible support if invoked as determine_expected_marks(component)
+        component = syllabus
+        syllabus_str = "9709"
+    else:
+        syllabus_str = str(syllabus).strip()
+
+    comp_num = int(component) if component is not None else 1
+
+    if syllabus_str == "9709":
+        if comp_num in (1, 3):
+            return 75
+        return 50
+
+    # Extensible fallbacks for other Cambridge syllabuses
+    if syllabus_str in ("9231",):  # Further Mathematics
+        if comp_num in (1, 2):
+            return 75
+        return 50
+    elif syllabus_str in ("9701", "9702", "9700"):  # Chemistry, Physics, Biology
+        if comp_num == 1:
+            return 40  # Multiple Choice
+        elif comp_num in (2, 3):
+            return 60  # AS Level Structured Questions / Practical
+        elif comp_num == 4:
+            return 100  # A Level Structured Questions
+        elif comp_num == 5:
+            return 30  # Planning, Analysis and Evaluation
+
+    if comp_num in (1, 3):
         return 75
     return 50
 
@@ -105,7 +119,7 @@ def parse_paper_metadata(
         total_pages = get_pdf_page_count(path)
 
     mode = determine_mode(total_pages, year)
-    expected_marks = determine_expected_marks(component)
+    expected_marks = determine_expected_marks(syllabus, component)
     output_dir = f"data/extracted/{syllabus}/{year}_{session}/{paper_code}"
 
     # Determine relative source_pdf path

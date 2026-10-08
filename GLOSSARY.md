@@ -11,7 +11,7 @@ An autonomous agent responsible for converting an unworked Question Paper into i
 _Avoid_: Parser agent, scraper agent
 
 **Verifier Agent**:
-An autonomous agent that inspects crops produced by the Extractor Agent against the source Question Paper pages, validating boundary accuracy, completeness of subparts, and lack of text clipping before marking the paper verified.
+An autonomous agent that inspects crops produced by the Extractor Agent against the source Question Paper pages, validating boundary accuracy, completeness of Question Parts, and lack of text clipping before marking the paper verified.
 _Avoid_: Reviewer agent, auditor agent
 
 **Processing Queue**:
@@ -25,7 +25,7 @@ A Cambridge examination paper containing question prompts, diagrams, and student
 _Avoid_: Exam sheet, test booklet
 
 **Question**:
-A top-level numbered problem in a Question Paper (e.g., Question 1, Question 2) which may contain preamble and one or more subparts.
+A top-level numbered problem in a Question Paper (e.g., Question 1, Question 2) which may contain preamble and one or more Question Parts.
 _Avoid_: Problem, item
 
 **Question Part**:
@@ -33,11 +33,11 @@ A specific sub-component of a question denoted by letters or roman numerals (e.g
 _Avoid_: Sub-question, subpart
 
 **Question Part Image**:
-An extracted image asset containing an individual subpart (e.g., `q01_a.png`), including any necessary shared preamble or context diagrams.
+An extracted image asset containing an individual Question Part (e.g., `q01_a.png`), including any necessary shared preamble or context diagrams.
 _Avoid_: Subpart snippet, partial crop
 
 **Composite Question Image**:
-A stitched, unified image asset of an entire question (`q01_full.png`) containing all preamble and subparts tightly joined with student answer workspace excised.
+A stitched, unified image asset of an entire question (`q01_full.png`) containing all preamble and Question Parts tightly joined with student answer workspace excised.
 _Avoid_: Merged image, stitched page
 
 **Full-Width Crop**:

@@ -2,7 +2,7 @@
 
 Reads a paper's manifest.json and rendered page images, performs full-width
 horizontal crops from normalized 0–1000 vertical bounding coordinates [ymin, 0, ymax, 1000],
-prepends stem preambles to standalone subpart crops (e.g. q01_a.png), excises candidate
+prepends stem preambles to standalone Question Part Images (e.g. q01_a.png), excises candidate
 answer workspace lines, and stitches composite question images (e.g. q01_full.png).
 """
 
@@ -24,8 +24,6 @@ def translate_coordinates(
     page_width: int,
     page_height: int,
     pad: int = 10,
-    xmin: float | None = None,
-    xmax: float | None = None,
 ) -> Tuple[int, int, int, int]:
     """Translate normalized 0-1000 coordinates to pixel coordinates.
 
@@ -40,8 +38,6 @@ def translate_coordinates(
         page_width: Width of source page in pixels.
         page_height: Height of source page in pixels.
         pad: Vertical safety padding in pixels (default: 10).
-        xmin: Optional normalized left bound (ignored, forced to 0).
-        xmax: Optional normalized right bound (ignored, forced to page_width).
 
     Returns:
         Tuple of (x1, y1, x2, y2) pixel bounding box.
@@ -224,21 +220,42 @@ def crop_and_stitch(
 
     for q in questions:
         q_num = int(q.get("number", 1))
-        has_preamble = bool(q.get("has_preamble", False))
-        preamble_slice_info = q.get("preamble_slice")
+        has_preamble = q.get("has_preamble", None)
+
+        preamble_slice_list: List[Dict[str, Any]] = []
+        if has_preamble is not False:
+            if "preamble_slices" in q and q["preamble_slices"]:
+                raw_preambles = q["preamble_slices"]
+                if isinstance(raw_preambles, list):
+                    preamble_slice_list.extend(raw_preambles)
+                elif isinstance(raw_preambles, dict):
+                    preamble_slice_list.append(raw_preambles)
+            elif "preamble_slice" in q and q["preamble_slice"]:
+                raw_preambles = q["preamble_slice"]
+                if isinstance(raw_preambles, list):
+                    preamble_slice_list.extend(raw_preambles)
+                elif isinstance(raw_preambles, dict):
+                    preamble_slice_list.append(raw_preambles)
+
+        preamble_imgs: List[Image.Image] = []
+        for p_slice in preamble_slice_list:
+            preamble_imgs.append(_crop_slice(pages_path, p_slice, pad, page_cache))
 
         preamble_img: Image.Image | None = None
-        if has_preamble and preamble_slice_info:
-            preamble_img = _crop_slice(pages_path, preamble_slice_info, pad, page_cache)
+        if preamble_imgs:
+            preamble_img = concatenate_vertical(preamble_imgs, spacing=spacing)
 
         composite_slices: List[Image.Image] = []
-        if preamble_img is not None:
-            composite_slices.append(preamble_img)
+        if preamble_imgs:
+            composite_slices.extend(preamble_imgs)
 
         parts = q.get("parts", [])
-        # If parts list is empty, support root question slices
-        if not parts and "slices" in q:
-            parts = [{"label": "", "slices": q["slices"]}]
+        # If parts list is empty, support root question slices or whole question box
+        if not parts:
+            if "slices" in q:
+                parts = [{"label": "", "slices": q["slices"]}]
+            elif "box_1000" in q or ("ymin" in q and "ymax" in q):
+                parts = [{"label": "", "slices": [q]}]
 
         for idx, part in enumerate(parts, start=1):
             slices_info = part.get("slices", [])
@@ -255,7 +272,7 @@ def crop_and_stitch(
 
             composite_slices.extend(part_slice_imgs)
 
-            # Standalone subpart image: prepend preamble if present
+            # Standalone Question Part Image: prepend preamble if present
             if preamble_img is not None:
                 standalone_img = concatenate_vertical(
                     [preamble_img, part_main_img], spacing=spacing
@@ -263,11 +280,11 @@ def crop_and_stitch(
             else:
                 standalone_img = part_main_img
 
-            # Determine output filename for subpart
+            # Determine output filename for Question Part Image
             if part.get("asset_path"):
                 filename = Path(part["asset_path"]).name
             else:
-                raw_label = str(part.get("label", "")).strip().strip("()")
+                raw_label = str(part.get("label") or part.get("part_label") or "").strip().strip("()")
                 clean_label = re.sub(r"[^a-zA-Z0-9_-]", "", raw_label)
                 if clean_label:
                     filename = f"q{q_num:02d}_{clean_label}.png"

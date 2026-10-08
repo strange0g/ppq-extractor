@@ -303,6 +303,17 @@ class TestQueueManagerCLI(unittest.TestCase):
         self.assertEqual(determine_expected_marks(6), 50)
         self.assertEqual(determine_expected_marks(7), 50)
 
+        # Explicit syllabus 9709
+        self.assertEqual(determine_expected_marks("9709", 1), 75)
+        self.assertEqual(determine_expected_marks("9709", 3), 75)
+        self.assertEqual(determine_expected_marks("9709", 4), 50)
+
+        # Extensible syllabuses
+        self.assertEqual(determine_expected_marks("9231", 1), 75)
+        self.assertEqual(determine_expected_marks("9231", 3), 50)
+        self.assertEqual(determine_expected_marks("9702", 1), 40)
+        self.assertEqual(determine_expected_marks("9702", 4), 100)
+
         # Mode rule: compact for <10 pages or year < 2017; write_in for >=10 pages and >= 2017
         self.assertEqual(determine_mode(4, 2024), "compact")
         self.assertEqual(determine_mode(8, 2010), "compact")

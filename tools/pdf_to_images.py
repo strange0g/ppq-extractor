@@ -17,20 +17,7 @@ from typing import Any, Dict
 
 from PIL import Image
 
-
-def get_pdf_page_count(pdf_path: Path) -> int:
-    """Retrieve total page count of a PDF using pdfinfo."""
-    pdfinfo_bin = shutil.which("pdfinfo") or "/usr/bin/pdfinfo"
-    proc = subprocess.run(
-        [pdfinfo_bin, str(pdf_path)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    for line in proc.stdout.splitlines():
-        if line.startswith("Pages:"):
-            return int(line.split(":", 1)[1].strip())
-    raise ValueError(f"Could not determine page count from pdfinfo for {pdf_path}")
+from tools.pdf_utils import get_pdf_page_count
 
 
 def render_pdf_to_images(

@@ -146,5 +146,19 @@ class TestPdfToImages(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
 
 
+    def test_get_pdf_page_count(self):
+        from tools.pdf_utils import get_pdf_page_count
+
+        pdf_path = find_sample_pdf()
+        self.assertEqual(get_pdf_page_count(pdf_path), 20)
+
+        single_pdf = self.out_dir / "single.pdf"
+        single_pdf.write_bytes(MINIMAL_1PAGE_PDF)
+        self.assertEqual(get_pdf_page_count(single_pdf), 1)
+
+        with self.assertRaises(FileNotFoundError):
+            get_pdf_page_count(self.out_dir / "does_not_exist.pdf")
+
+
 if __name__ == "__main__":
     unittest.main()

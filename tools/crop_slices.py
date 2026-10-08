@@ -177,9 +177,10 @@ def _get_relative_asset_path(
     try:
         return str(out_file.resolve().relative_to(manifest_dir))
     except ValueError:
-        if out_dir.name == "crops":
-            return f"crops/{out_file.name}"
-        return out_file.name
+        try:
+            return str(out_file.resolve().relative_to(out_dir.resolve()))
+        except ValueError:
+            return out_file.name
 
 
 def crop_and_stitch(
@@ -189,12 +190,20 @@ def crop_and_stitch(
     pad: int = 10,
     spacing: int = 20,
 ) -> Dict[str, Any]:
-    """Process question slices from manifest.json and write cropped assets.
+    """Process question slices from manifest.json and write cropped Question Packages.
+
+    Outputs question packages under out_dir/questions/q{NN}/:
+      - preamble.png (if question has preamble slices)
+      - part_{label}.png (isolated Question Part Images without preamble)
+      - full.png (composite question image stitching preamble + all parts with 20px padding)
+      - question.json (atomic item-level metadata descriptor)
+
+    Updates manifest.json with question_index and package metadata.
 
     Args:
         manifest_path: Path to paper manifest.json.
         pages_dir: Directory containing rendered page PNGs.
-        out_dir: Directory where cropped assets will be written.
+        out_dir: Directory where Question Packages or paper assets will be written.
         pad: Vertical padding in pixels added to each slice (default: 10).
         spacing: White separator divider between stitched parts (default: 20).
 
@@ -209,17 +218,23 @@ def crop_and_stitch(
     if not pages_path.is_dir():
         raise FileNotFoundError(f"Pages directory not found: {pages_path}")
 
-    crops_path = Path(out_dir).resolve()
-    crops_path.mkdir(parents=True, exist_ok=True)
+    base_out_path = Path(out_dir).resolve()
+    base_out_path.mkdir(parents=True, exist_ok=True)
 
     manifest_data = json.loads(manifest_file.read_text(encoding="utf-8"))
+    paper_id = str(manifest_data.get("id") or manifest_data.get("paper_id") or "")
     questions = manifest_data.get("questions", [])
 
     page_cache: Dict[int, Image.Image] = {}
     generated_crops: List[str] = []
+    question_index: List[Dict[str, Any]] = []
 
     for q in questions:
         q_num = int(q.get("number", 1))
+        q_dir_name = f"q{q_num:02d}"
+        q_pkg_dir = base_out_path / "questions" / q_dir_name
+        q_pkg_dir.mkdir(parents=True, exist_ok=True)
+
         has_preamble = q.get("has_preamble", None)
 
         preamble_slice_list: List[Dict[str, Any]] = []
@@ -242,8 +257,28 @@ def crop_and_stitch(
             preamble_imgs.append(_crop_slice(pages_path, p_slice, pad, page_cache))
 
         preamble_img: Image.Image | None = None
+        preamble_meta: Dict[str, Any] = {
+            "present": False,
+            "asset_path": None,
+            "dimensions": None,
+            "slices": preamble_slice_list,
+        }
+
         if preamble_imgs:
             preamble_img = concatenate_vertical(preamble_imgs, spacing=spacing)
+            preamble_file = q_pkg_dir / "preamble.png"
+            preamble_img.save(preamble_file, format="PNG")
+            generated_crops.append(str(preamble_file))
+
+            preamble_meta = {
+                "present": True,
+                "asset_path": "preamble.png",
+                "dimensions": {
+                    "width": preamble_img.width,
+                    "height": preamble_img.height,
+                },
+                "slices": preamble_slice_list,
+            }
 
         composite_slices: List[Image.Image] = []
         if preamble_imgs:
@@ -256,6 +291,9 @@ def crop_and_stitch(
                 parts = [{"label": "", "slices": q["slices"]}]
             elif "box_1000" in q or ("ymin" in q and "ymax" in q):
                 parts = [{"label": "", "slices": [q]}]
+
+        q_id = f"{paper_id}_q{q_num:02d}" if paper_id else f"q{q_num:02d}"
+        question_parts_meta: List[Dict[str, Any]] = []
 
         for idx, part in enumerate(parts, start=1):
             slices_info = part.get("slices", [])
@@ -272,56 +310,123 @@ def crop_and_stitch(
 
             composite_slices.extend(part_slice_imgs)
 
-            # Standalone Question Part Image: prepend preamble if present
-            if preamble_img is not None:
-                standalone_img = concatenate_vertical(
-                    [preamble_img, part_main_img], spacing=spacing
-                )
+            # Isolated Question Part Image: DO NOT prepend preamble
+            raw_label = str(part.get("label") or part.get("part_label") or "").strip().strip("()")
+            clean_label = re.sub(r"[^a-zA-Z0-9_-]", "", raw_label)
+            if clean_label:
+                filename = f"part_{clean_label}.png"
+                label_val = clean_label
+            elif len(parts) == 1:
+                filename = "part.png"
+                label_val = ""
             else:
-                standalone_img = part_main_img
+                filename = f"part_{idx}.png"
+                label_val = str(idx)
 
-            # Determine output filename for Question Part Image
-            if part.get("asset_path"):
-                filename = Path(part["asset_path"]).name
-            else:
-                raw_label = str(part.get("label") or part.get("part_label") or "").strip().strip("()")
-                clean_label = re.sub(r"[^a-zA-Z0-9_-]", "", raw_label)
-                if clean_label:
-                    filename = f"q{q_num:02d}_{clean_label}.png"
-                elif len(parts) == 1:
-                    filename = f"q{q_num:02d}.png"
-                else:
-                    filename = f"q{q_num:02d}_part{idx}.png"
-
-            out_file = crops_path / filename
-            standalone_img.save(out_file, format="PNG")
-            generated_crops.append(str(out_file))
+            part_file = q_pkg_dir / filename
+            part_main_img.save(part_file, format="PNG")
+            generated_crops.append(str(part_file))
 
             # Update part metadata in manifest
-            rel_asset_path = _get_relative_asset_path(out_file, manifest_file, crops_path)
-            part["asset_path"] = rel_asset_path
-            part["width"] = standalone_img.width
-            part["height"] = standalone_img.height
+            rel_part_manifest_path = _get_relative_asset_path(part_file, manifest_file, base_out_path)
+            part["asset_path"] = rel_part_manifest_path
+            part["width"] = part_main_img.width
+            part["height"] = part_main_img.height
 
-        # Generate composite question image
+            # Part metadata for question.json
+            part_identifier = f"{q_id}_{clean_label}" if clean_label else f"{q_id}_p{idx}"
+            part_marks = part.get("marks")
+            part_context_deps = ["preamble"] if preamble_meta["present"] else []
+
+            question_parts_meta.append({
+                "part_id": part_identifier,
+                "label": label_val,
+                "marks": part_marks,
+                "isolated_asset_path": filename,
+                "dimensions": {
+                    "width": part_main_img.width,
+                    "height": part_main_img.height,
+                },
+                "slices": slices_info,
+                "context_dependencies": part_context_deps,
+            })
+
+        # Generate composite question image (preamble + all subparts)
+        composite_meta: Dict[str, Any] = {
+            "asset_path": "full.png",
+            "dimensions": None,
+        }
         if composite_slices:
             composite_img = concatenate_vertical(composite_slices, spacing=spacing)
-
-            if q.get("composite_asset_path"):
-                comp_filename = Path(q["composite_asset_path"]).name
-            else:
-                comp_filename = f"q{q_num:02d}_full.png"
-
-            comp_file = crops_path / comp_filename
+            comp_file = q_pkg_dir / "full.png"
             composite_img.save(comp_file, format="PNG")
             generated_crops.append(str(comp_file))
 
-            rel_comp_path = _get_relative_asset_path(comp_file, manifest_file, crops_path)
+            rel_comp_path = _get_relative_asset_path(comp_file, manifest_file, base_out_path)
             q["composite_asset_path"] = rel_comp_path
             q["composite_width"] = composite_img.width
             q["composite_height"] = composite_img.height
 
-    # Save updated manifest back to disk
+            composite_meta = {
+                "asset_path": "full.png",
+                "dimensions": {
+                    "width": composite_img.width,
+                    "height": composite_img.height,
+                },
+            }
+
+        # Calculate question total marks
+        if "marks" in q and q["marks"] is not None:
+            q_total_marks = int(q["marks"])
+        elif "total_question_marks" in q and q["total_question_marks"] is not None:
+            q_total_marks = int(q["total_question_marks"])
+        else:
+            q_total_marks = sum(
+                int(p["marks"]) for p in question_parts_meta if p.get("marks") is not None
+            )
+
+        # Atomic question.json
+        q_json_file = q_pkg_dir / "question.json"
+        q_json_content = {
+            "id": q_id,
+            "paper_id": paper_id,
+            "question_number": q_num,
+            "total_marks": q_total_marks,
+            "preamble": preamble_meta,
+            "parts": question_parts_meta,
+            "composite": composite_meta,
+            "taxonomy": {
+                "topics": q.get("topics", []),
+                "has_diagram": bool(preamble_meta["present"] or q.get("has_diagram", False)),
+            },
+        }
+        q_json_file.write_text(json.dumps(q_json_content, indent=2), encoding="utf-8")
+
+        # Manifest index item: spec dictates package_path: "questions/q{NN}/question.json"
+        # and composite_asset: "questions/q{NN}/full.png" relative to paper root
+        try:
+            rel_pkg_path = str(q_json_file.resolve().relative_to(manifest_file.resolve().parent))
+            rel_composite_asset = str((q_pkg_dir / "full.png").resolve().relative_to(manifest_file.resolve().parent))
+        except ValueError:
+            rel_pkg_path = f"questions/{q_dir_name}/question.json"
+            rel_composite_asset = f"questions/{q_dir_name}/full.png"
+
+        # If crops_dir was passed as crops/ but questions lives inside, normalize
+        # spec.md section 3: package_path: "questions/q01/question.json", composite_asset: "questions/q01/full.png"
+        if rel_pkg_path.startswith("crops/questions/"):
+            rel_pkg_path = rel_pkg_path[len("crops/"):]
+        if rel_composite_asset.startswith("crops/questions/"):
+            rel_composite_asset = rel_composite_asset[len("crops/"):]
+
+        question_index.append({
+            "question_number": q_num,
+            "package_path": rel_pkg_path,
+            "total_marks": q_total_marks,
+            "composite_asset": rel_composite_asset,
+        })
+
+    # Update paper-level manifest
+    manifest_data["question_index"] = question_index
     manifest_file.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
 
     return {

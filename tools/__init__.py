@@ -1,1 +1,1 @@
-"""PPQ Extractor deterministic tooling package."""
+"""Command-line tools for ppq-extractor."""

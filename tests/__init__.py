@@ -1,1 +1,1 @@
-"""PPQ Extractor tests package."""
+"""Test suite for ppq-extractor."""

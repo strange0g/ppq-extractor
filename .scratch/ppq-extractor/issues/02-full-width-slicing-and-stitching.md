@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: PDF to High-Resolution Page Image Tool
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Command `python3 -m tools.crop_slices --manifest <manifest_path> --pages-dir <pages_dir> --out-dir <crops_dir>` executes cleanly.
 - [ ] Transforms normalized $[ymin, 0, ymax, 1000]$ into pixel coordinates with +10px vertical safety padding.

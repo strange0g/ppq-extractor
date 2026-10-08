@@ -1,20 +1,23 @@
 ## Pipeline Roles
 
-The PPQ Extractor pipeline runs autonomously with two decoupled agent roles:
+The PPQ Extractor pipeline runs autonomously with two decoupled agent roles operating in scheduled hourly containers (without nested LLM loops):
 
 ### Extractor Agent
 - Responsible for converting an unworked Question Paper into rendered page images.
-- Invokes multimodal vision LLM on content pages using [`prompts/vision_slicing.md`](file:///home/raied/Programming/ppq-extractor/prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
+- Invokes multimodal vision capabilities on content pages using [`prompts/vision_slicing.md`](file:///home/raied/Programming/ppq-extractor/prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
+- Enforces the question number invariant: `ymin` must strictly encompass top-level question numerals (e.g., bold "1", "2") with an upward safety buffer of at least 15 normalized units (~15px) so question numbers are never clipped or excised.
 - Excises dotted, lined, or dashed answer workspace lines.
-- Assembles per-paper `manifest.json` and invokes [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) to generate standalone Question Part Images and Composite Question Images.
-- Updates queue status to `extracted` via [`tools.queue_manager`](file:///home/raied/Programming/ppq-extractor/tools/queue_manager.py).
+- Assembles per-paper `manifest.json` and invokes [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) to generate modular Question Packages (`questions/q{NN}/`) containing standalone Question Preamble Images (`preamble.png`), isolated Question Part Images (`part_{label}.png`), Composite Question Images (`full.png`), and atomic metadata descriptors (`question.json`).
+- Updates queue status to `extracted` with `--extracted-marks` via [`tools.queue_manager`](file:///home/raied/Programming/ppq-extractor/tools/queue_manager.py).
 - Detailed agent system instructions: [`prompts/extractor_agent.md`](file:///home/raied/Programming/ppq-extractor/prompts/extractor_agent.md).
 
 ### Verifier Agent
-- Responsible for inspecting crops produced by the Extractor Agent against the source Question Paper pages.
+- Responsible for inspecting Question Packages produced by the Extractor Agent against the source Question Paper pages.
 - Audits mathematical mark-sum invariants against syllabus benchmarks (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Stats).
+- Audits Question Packages for question number visibility (especially Question 1) to verify question numerals were not clipped or excised.
 - Performs page-by-page visual reconciliation to verify sequence completeness and ensure no mathematical symbols, exponents, or mark tags are clipped.
-- Autonomously repairs coordinates in `manifest.json` and re-runs [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) when minor flaws exist.
+- Validates the integrity of per-question `question.json` descriptors and the paper-level `manifest.json` index.
+- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) when minor flaws exist.
 - Approves verified papers or flags unresolvable defects as `needs_rework` via [`tools.queue_manager`](file:///home/raied/Programming/ppq-extractor/tools/queue_manager.py).
 - Detailed agent system instructions: [`prompts/verifier_agent.md`](file:///home/raied/Programming/ppq-extractor/prompts/verifier_agent.md).
 
@@ -24,8 +27,10 @@ The PPQ Extractor pipeline runs autonomously with two decoupled agent roles:
 
 All agents must strictly adhere to the domain terminology defined in [`GLOSSARY.md`](file:///home/raied/Programming/ppq-extractor/GLOSSARY.md).
 Specifically:
-- Use **Question Part Image** (e.g., `q01_a.png`), never "subpart snippet" or "partial crop".
-- Use **Composite Question Image** (e.g., `q01_full.png`), never "merged image" or "stitched page".
+- Use **Question Package** (e.g., `questions/q01/` with `question.json`), never "question folder" or "problem bundle".
+- Use **Question Preamble Image** (e.g., `preamble.png`), never "stem crop" or "header snippet".
+- Use **Question Part Image** (e.g., `part_a.png`), never "subpart snippet" or "partial crop".
+- Use **Composite Question Image** (e.g., `full.png`), never "merged image" or "stitched page".
 - Use **Full-Width Crop** (width 0 to 1000 normalized), never "tight box" or "arbitrary crop".
 - Use **Answer Workspace**, never "dead zone" or "blank area".
 - Use **Processing Queue** (`.pipeline/queue.json`), never "job table" or "database queue".
@@ -53,10 +58,15 @@ Agents must use the deterministic CLI tools provided in the repository instead o
    python3 -m tools.pdf_to_images --pdf <SOURCE_PDF> --out-dir <OUTPUT_DIR>/pages --dpi 200
    ```
 
-3. **Full-Width Cropping & Stitching**:
+3. **Full-Width Cropping & Question Package Generation**:
    ```bash
-   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <CROPS_DIR>
+   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
    ```
+   Outputs Question Packages under `<OUTPUT_DIR>/questions/q{NN}/`:
+   - `preamble.png` (optional stem context)
+   - `part_{label}.png` (isolated Question Part Images)
+   - `full.png` (Composite Question Image)
+   - `question.json` (atomic item metadata descriptor)
 
 ---
 

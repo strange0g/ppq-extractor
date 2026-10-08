@@ -103,7 +103,7 @@ class TestCropSlices(unittest.TestCase):
         self.assertEqual(x2, 1654)
 
     def test_standalone_part_generation_with_preamble(self):
-        """Test standalone part image prepends preamble slice with 20px white divider."""
+        """Test question preamble is cropped once to preamble.png and part is cropped in isolation to part_a.png."""
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
@@ -136,10 +136,8 @@ class TestCropSlices(unittest.TestCase):
                                     "xmax": 1000,
                                 }
                             ],
-                            "asset_path": "crops/q01_a.png",
                         }
                     ],
-                    "composite_asset_path": "crops/q01_full.png",
                 }
             ],
         }
@@ -148,28 +146,27 @@ class TestCropSlices(unittest.TestCase):
 
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
 
-        part_img_path = self.crops_dir / "q01_a.png"
-        self.assertTrue(part_img_path.is_file(), f"Expected crop {part_img_path} not found")
+        q1_dir = self.crops_dir / "questions" / "q01"
+        self.assertTrue(q1_dir.is_dir(), f"Question package dir {q1_dir} does not exist")
+
+        preamble_path = q1_dir / "preamble.png"
+        self.assertTrue(preamble_path.is_file(), f"Expected preamble {preamble_path} not found")
+
+        part_img_path = q1_dir / "part_a.png"
+        self.assertTrue(part_img_path.is_file(), f"Expected isolated part {part_img_path} not found")
+
+        with Image.open(preamble_path) as im_p:
+            self.assertEqual(im_p.size, (1000, 220))
+            self.assertEqual(im_p.getpixel((500, 100)), (255, 200, 200))  # Red band
 
         with Image.open(part_img_path) as im:
-            # Expected dimensions: W=1000, H = 220 (preamble) + 20 (spacing) + 220 (part a) = 460
-            self.assertEqual(im.size, (1000, 460))
-
-            # Verify white divider of 20px height between y=220 and y=240
-            for dy in range(220, 240):
-                pixel = im.getpixel((500, dy))
-                self.assertEqual(pixel, (255, 255, 255), f"Divider pixel at y={dy} is not white")
-
-            # Verify preamble content is in top portion
-            top_pixel = im.getpixel((500, 100))
-            self.assertEqual(top_pixel, (255, 200, 200))  # Red band from page 1
-
-            # Verify part a content is in bottom portion
-            bottom_pixel = im.getpixel((500, 240 + 100))
-            self.assertEqual(bottom_pixel, (200, 255, 200))  # Green band from page 1
+            # Standalone isolated part must NOT contain preamble -> H = 220
+            self.assertEqual(im.size, (1000, 220))
+            # Green band from page 1 part slice
+            self.assertEqual(im.getpixel((500, 100)), (200, 255, 200))
 
     def test_composite_question_generation_omits_workspace(self):
-        """Test qXX_full.png stitches preamble and all parts vertically with 20px divider."""
+        """Test full.png stitches preamble and all parts vertically with 20px divider."""
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
@@ -202,7 +199,6 @@ class TestCropSlices(unittest.TestCase):
                                     "xmax": 1000,
                                 }
                             ],
-                            "asset_path": "crops/q01_a.png",
                         },
                         {
                             "label": "b",
@@ -216,10 +212,8 @@ class TestCropSlices(unittest.TestCase):
                                     "xmax": 1000,
                                 }
                             ],
-                            "asset_path": "crops/q01_b.png",
                         },
                     ],
-                    "composite_asset_path": "crops/q01_full.png",
                 }
             ],
         }
@@ -228,7 +222,7 @@ class TestCropSlices(unittest.TestCase):
 
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
 
-        composite_path = self.crops_dir / "q01_full.png"
+        composite_path = self.crops_dir / "questions" / "q01" / "full.png"
         self.assertTrue(composite_path.is_file(), f"Composite crop not found: {composite_path}")
 
         with Image.open(composite_path) as im:
@@ -249,7 +243,7 @@ class TestCropSlices(unittest.TestCase):
             self.assertEqual(im.getpixel((500, 550)), (255, 200, 200))
 
     def test_single_part_question_without_preamble(self):
-        """Test single-part question without preamble (direct crop)."""
+        """Test single-part question without preamble (direct crop, no preamble.png)."""
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
@@ -274,10 +268,8 @@ class TestCropSlices(unittest.TestCase):
                                     "xmax": 1000,
                                 }
                             ],
-                            "asset_path": "crops/q02_a.png",
                         }
                     ],
-                    "composite_asset_path": "crops/q02_full.png",
                 }
             ],
         }
@@ -286,23 +278,25 @@ class TestCropSlices(unittest.TestCase):
 
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
 
-        part_img = self.crops_dir / "q02_a.png"
-        comp_img = self.crops_dir / "q02_full.png"
+        q2_dir = self.crops_dir / "questions" / "q02"
+        self.assertTrue(q2_dir.is_dir())
+        self.assertFalse((q2_dir / "preamble.png").exists(), "preamble.png should not exist when has_preamble is False")
+
+        part_img = q2_dir / "part_a.png"
+        comp_img = q2_dir / "full.png"
         self.assertTrue(part_img.is_file())
         self.assertTrue(comp_img.is_file())
 
         with Image.open(part_img) as im:
-            # Standalone crop has no preamble prepended -> H=220
             self.assertEqual(im.size, (1000, 220))
             # Blue band content
             self.assertEqual(im.getpixel((500, 100)), (200, 200, 255))
 
         with Image.open(comp_img) as im:
-            # Composite for single part question is also H=220
             self.assertEqual(im.size, (1000, 220))
 
     def test_manifest_updating_with_asset_paths_and_dimensions(self):
-        """Test manifest.json is updated with asset file paths and pixel dimensions."""
+        """Test manifest.json and question.json metadata generation and indexing."""
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
@@ -347,15 +341,52 @@ class TestCropSlices(unittest.TestCase):
         q1 = updated["questions"][0]
         part_a = q1["parts"][0]
 
-        # Verify part asset_path and dimensions
-        self.assertEqual(part_a["asset_path"], "crops/q01_a.png")
+        # Verify part asset_path and dimensions in manifest
+        self.assertIn("part_a.png", part_a["asset_path"])
         self.assertEqual(part_a["width"], 1000)
-        self.assertEqual(part_a["height"], 460)
+        self.assertEqual(part_a["height"], 220)
 
         # Verify composite asset path and dimensions
-        self.assertEqual(q1["composite_asset_path"], "crops/q01_full.png")
+        self.assertIn("full.png", q1["composite_asset_path"])
         self.assertEqual(q1["composite_width"], 1000)
         self.assertEqual(q1["composite_height"], 460)
+
+        # Verify question_index in manifest
+        self.assertIn("question_index", updated)
+        self.assertEqual(len(updated["question_index"]), 1)
+        idx_entry = updated["question_index"][0]
+        self.assertEqual(idx_entry["question_number"], 1)
+        self.assertEqual(idx_entry["package_path"], "questions/q01/question.json")
+        self.assertEqual(idx_entry["total_marks"], 3)
+        self.assertEqual(idx_entry["composite_asset"], "questions/q01/full.png")
+
+        # Verify atomic question.json file
+        q_json_path = self.crops_dir / "questions" / "q01" / "question.json"
+        self.assertTrue(q_json_path.is_file(), f"question.json not found at {q_json_path}")
+        q_data = json.loads(q_json_path.read_text())
+
+        self.assertEqual(q_data["id"], "test_paper_04_q01")
+        self.assertEqual(q_data["paper_id"], "test_paper_04")
+        self.assertEqual(q_data["question_number"], 1)
+        self.assertEqual(q_data["total_marks"], 3)
+
+        self.assertTrue(q_data["preamble"]["present"])
+        self.assertEqual(q_data["preamble"]["asset_path"], "preamble.png")
+        self.assertEqual(q_data["preamble"]["dimensions"]["width"], 1000)
+        self.assertEqual(q_data["preamble"]["dimensions"]["height"], 220)
+
+        self.assertEqual(len(q_data["parts"]), 1)
+        part_meta = q_data["parts"][0]
+        self.assertEqual(part_meta["label"], "a")
+        self.assertEqual(part_meta["marks"], 3)
+        self.assertEqual(part_meta["isolated_asset_path"], "part_a.png")
+        self.assertEqual(part_meta["context_dependencies"], ["preamble"])
+        self.assertEqual(part_meta["dimensions"]["width"], 1000)
+        self.assertEqual(part_meta["dimensions"]["height"], 220)
+
+        self.assertEqual(q_data["composite"]["asset_path"], "full.png")
+        self.assertEqual(q_data["composite"]["dimensions"]["width"], 1000)
+        self.assertEqual(q_data["composite"]["dimensions"]["height"], 460)
 
     def test_cli_invocation(self):
         """Test CLI execution with standard flags."""
@@ -406,8 +437,9 @@ class TestCropSlices(unittest.TestCase):
 
         output = json.loads(proc.stdout)
         self.assertIn("crops_count", output)
-        self.assertTrue((self.crops_dir / "q01_a.png").is_file())
-        self.assertTrue((self.crops_dir / "q01_full.png").is_file())
+        self.assertTrue((self.crops_dir / "questions" / "q01" / "part_a.png").is_file())
+        self.assertTrue((self.crops_dir / "questions" / "q01" / "full.png").is_file())
+        self.assertTrue((self.crops_dir / "questions" / "q01" / "question.json").is_file())
 
     def test_invalid_coordinates_raise_error(self):
         """Test invalid coordinates raise ValueError."""
@@ -500,25 +532,29 @@ class TestCropSlices(unittest.TestCase):
         result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["questions_processed"], 2)
-        # Q1 has part a, part b, and composite (3). Q2 has part a and composite (2). Total = 5.
-        self.assertEqual(result["crops_count"], 5)
+        # Q1 has preamble, part a, part b, composite (4). Q2 has part a, composite (2). Total = 6.
+        self.assertEqual(result["crops_count"], 6)
 
         # Verify Q1 assets
-        self.assertTrue((self.crops_dir / "q01_a.png").is_file())
-        self.assertTrue((self.crops_dir / "q01_b.png").is_file())
-        self.assertTrue((self.crops_dir / "q01_full.png").is_file())
+        q1_dir = self.crops_dir / "questions" / "q01"
+        self.assertTrue((q1_dir / "preamble.png").is_file())
+        self.assertTrue((q1_dir / "part_a.png").is_file())
+        self.assertTrue((q1_dir / "part_b.png").is_file())
+        self.assertTrue((q1_dir / "full.png").is_file())
+        self.assertTrue((q1_dir / "question.json").is_file())
 
         # Verify Q2 assets
-        self.assertTrue((self.crops_dir / "q02_a.png").is_file())
-        self.assertTrue((self.crops_dir / "q02_full.png").is_file())
+        q2_dir = self.crops_dir / "questions" / "q02"
+        self.assertFalse((q2_dir / "preamble.png").exists())
+        self.assertTrue((q2_dir / "part_a.png").is_file())
+        self.assertTrue((q2_dir / "full.png").is_file())
+        self.assertTrue((q2_dir / "question.json").is_file())
 
         # Check updated manifest
         updated = json.loads(manifest_file.read_text())
-        self.assertEqual(updated["questions"][0]["parts"][0]["asset_path"], "crops/q01_a.png")
-        self.assertEqual(updated["questions"][0]["parts"][1]["asset_path"], "crops/q01_b.png")
-        self.assertEqual(updated["questions"][0]["composite_asset_path"], "crops/q01_full.png")
-        self.assertEqual(updated["questions"][1]["parts"][0]["asset_path"], "crops/q02_a.png")
-        self.assertEqual(updated["questions"][1]["composite_asset_path"], "crops/q02_full.png")
+        self.assertEqual(len(updated["question_index"]), 2)
+        self.assertEqual(updated["question_index"][0]["package_path"], "questions/q01/question.json")
+        self.assertEqual(updated["question_index"][1]["package_path"], "questions/q02/question.json")
 
     def test_multi_slice_preamble_and_standalone_whole_question(self):
         """Test handling of multi-slice preambles and standalone whole questions."""
@@ -556,13 +592,18 @@ class TestCropSlices(unittest.TestCase):
         result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
         self.assertEqual(result["status"], "success")
 
-        # Q1 has standalone part a and composite
-        self.assertTrue((self.crops_dir / "q01_a.png").is_file())
-        self.assertTrue((self.crops_dir / "q01_full.png").is_file())
+        # Q1 has preamble.png, part_a.png, full.png, question.json
+        q1_dir = self.crops_dir / "questions" / "q01"
+        self.assertTrue((q1_dir / "preamble.png").is_file())
+        self.assertTrue((q1_dir / "part_a.png").is_file())
+        self.assertTrue((q1_dir / "full.png").is_file())
+        self.assertTrue((q1_dir / "question.json").is_file())
 
-        # Q2 has standalone whole question q02.png and composite q02_full.png
-        self.assertTrue((self.crops_dir / "q02.png").is_file())
-        self.assertTrue((self.crops_dir / "q02_full.png").is_file())
+        # Q2 has whole question: part.png or part_whole.png and full.png
+        q2_dir = self.crops_dir / "questions" / "q02"
+        self.assertTrue((q2_dir / "full.png").is_file())
+        self.assertTrue((q2_dir / "question.json").is_file())
+        self.assertTrue((q2_dir / "part.png").is_file() or (q2_dir / "part_whole.png").is_file() or (q2_dir / "part_1.png").is_file())
 
 
 if __name__ == "__main__":

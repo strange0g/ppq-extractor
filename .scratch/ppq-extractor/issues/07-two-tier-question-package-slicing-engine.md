@@ -4,11 +4,11 @@
 
 **Blocked by:** 06: Standard CAIE Directory Taxonomy in Queue Manager
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Question stem preambles are sliced into a standalone `preamble.png` when present and not redundantly prepended onto subpart crops.
-- [ ] Each Question Part is sliced strictly in isolation as `part_{label}.png` (`part_a.png`, `part_b.png`, etc.).
-- [ ] Each question has a stitched `full.png` combining preamble and all parts with 20px padding dividers and student answer workspaces excised.
-- [ ] Each question produces an atomic `questions/q{NN}/question.json` file declaring question ID, total marks, preamble presence, parts array with coordinates and `dependencies: ["preamble"]`.
-- [ ] Paper-level `manifest.json` indexes all question packages and records whole-paper mark sums and verification attributes.
-- [ ] Unit tests in `tests/test_crop_slices.py` assert directory structure, decoupled assets, and metadata schema validation.
+- [x] Question stem preambles are sliced into a standalone `preamble.png` when present and not redundantly prepended onto subpart crops.
+- [x] Each Question Part is sliced strictly in isolation as `part_{label}.png` (`part_a.png`, `part_b.png`, etc.).
+- [x] Each question has a stitched `full.png` combining preamble and all parts with 20px padding dividers and student answer workspaces excised.
+- [x] Each question produces an atomic `questions/q{NN}/question.json` file declaring question ID, total marks, preamble presence, parts array with coordinates and `dependencies: ["preamble"]`.
+- [x] Paper-level `manifest.json` indexes all question packages and records whole-paper mark sums and verification attributes.
+- [x] Unit tests in `tests/test_crop_slices.py` assert directory structure, decoupled assets, and metadata schema validation.

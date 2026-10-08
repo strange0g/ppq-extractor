@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: Autonomous Prompts Suite & AGENTS.md Guidelines
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Complete PDF page images are rendered into `data/extracted/9709/2024_w/12/pages/`.
 - [ ] Representative questions are extracted with standalone subpart crops (`qXX_a.png`) and composite full question crops (`qXX_full.png`) in `crops/`.

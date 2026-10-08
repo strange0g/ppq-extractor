@@ -12,10 +12,15 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 try:
-    from tools.crop_slices import crop_and_stitch, translate_coordinates
+    from tools.crop_slices import (
+        crop_and_stitch,
+        translate_coordinates,
+        _format_part_naming,
+    )
 except ImportError:
     crop_and_stitch = None
     translate_coordinates = None
+    _format_part_naming = None
 
 
 class TestCropSlices(unittest.TestCase):
@@ -604,6 +609,139 @@ class TestCropSlices(unittest.TestCase):
         self.assertTrue((q2_dir / "full.png").is_file())
         self.assertTrue((q2_dir / "question.json").is_file())
         self.assertTrue((q2_dir / "part.png").is_file() or (q2_dir / "part_whole.png").is_file() or (q2_dir / "part_1.png").is_file())
+
+    def test_format_part_naming_helper(self):
+        """Test _format_part_naming helper cleans labels and formats ids."""
+        # Labeled part
+        part = {"label": "(a)", "part_label": "a"}
+        filename, label, part_id = _format_part_naming(part, idx=1, total_parts=2, q_id="paper_q01")
+        self.assertEqual(filename, "part_a.png")
+        self.assertEqual(label, "a")
+        self.assertEqual(part_id, "paper_q01_a")
+
+        # Single part with empty label
+        part_single = {"label": ""}
+        filename, label, part_id = _format_part_naming(part_single, idx=1, total_parts=1, q_id="paper_q01")
+        self.assertEqual(filename, "part.png")
+        self.assertEqual(label, "")
+        self.assertEqual(part_id, "paper_q01_p1")
+
+        # Multiple parts with empty label
+        part_num = {"label": None}
+        filename, label, part_id = _format_part_naming(part_num, idx=2, total_parts=3, q_id="paper_q01")
+        self.assertEqual(filename, "part_2.png")
+        self.assertEqual(label, "2")
+        self.assertEqual(part_id, "paper_q01_p2")
+
+    def test_empty_composite_slices_guards_asset_path(self):
+        """Test composite asset pointer is None when composite slices are empty."""
+        manifest_data = {
+            "paper_id": "test_empty_comp",
+            "questions": [
+                {
+                    "number": 1,
+                    "has_preamble": False,
+                    "parts": [],
+                }
+            ],
+        }
+        manifest_file = self.root / "manifest_empty.json"
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+
+        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+
+        q1_json = self.crops_dir / "questions" / "q01" / "question.json"
+        self.assertTrue(q1_json.is_file())
+        q_data = json.loads(q1_json.read_text())
+        self.assertIsNone(q_data["composite"]["asset_path"])
+        self.assertIsNone(q_data["composite"]["dimensions"])
+
+        updated_manifest = json.loads(manifest_file.read_text())
+        self.assertIsNone(updated_manifest["question_index"][0]["composite_asset"])
+
+    def test_manifest_verification_extracted_marks_and_balance_check(self):
+        """Test verification block extracted_marks and balance_check update."""
+        manifest_data = {
+            "paper_id": "test_balance",
+            "verification": {
+                "expected_marks": 75,
+                "status": "extracted",
+            },
+            "questions": [
+                {
+                    "number": 1,
+                    "has_preamble": False,
+                    "parts": [
+                        {
+                            "label": "a",
+                            "marks": 5,
+                            "slices": [{"page": 1, "ymin": 100, "xmin": 0, "ymax": 200, "xmax": 1000}],
+                        }
+                    ],
+                }
+            ],
+        }
+        manifest_file = self.root / "manifest_balance.json"
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+
+        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+        updated = json.loads(manifest_file.read_text())
+        self.assertEqual(updated["verification"]["extracted_marks"], 5)
+        self.assertFalse(updated["verification"]["balance_check"])
+
+        # Now when expected_marks matches
+        manifest_data["verification"]["expected_marks"] = 5
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+        updated = json.loads(manifest_file.read_text())
+        self.assertEqual(updated["verification"]["extracted_marks"], 5)
+        self.assertTrue(updated["verification"]["balance_check"])
+
+    def test_autonomous_crop_repair_from_question_json(self):
+        """Test autonomous crop repair loads edited coordinates from question.json."""
+        manifest_data = {
+            "paper_id": "test_repair",
+            "questions": [
+                {
+                    "number": 1,
+                    "has_preamble": False,
+                    "parts": [
+                        {
+                            "label": "a",
+                            "marks": 3,
+                            "slices": [{"page": 1, "ymin": 300, "xmin": 0, "ymax": 400, "xmax": 1000}],
+                        }
+                    ],
+                }
+            ],
+        }
+        manifest_file = self.root / "manifest_repair.json"
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+
+        # Initial crop run
+        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+        q1_json_file = self.crops_dir / "questions" / "q01" / "question.json"
+        self.assertTrue(q1_json_file.is_file())
+
+        with Image.open(self.crops_dir / "questions" / "q01" / "part_a.png") as part_img_initial:
+            initial_height = part_img_initial.height
+
+        # Simulate Verifier applying upward safety buffer directly in question.json
+        q1_data = json.loads(q1_json_file.read_text())
+        q1_data["parts"][0]["slices"][0]["ymin"] = 200  # Expand from 300 to 200
+        q1_json_file.write_text(json.dumps(q1_data, indent=2))
+
+        # Re-run cropping tool (autonomous repair)
+        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+
+        # Verify new crop used coordinates from question.json
+        with Image.open(self.crops_dir / "questions" / "q01" / "part_a.png") as part_img_repaired:
+            self.assertGreater(part_img_repaired.height, initial_height)
+
+        # Verify updated manifest in sync with question.json coordinates
+        updated_manifest = json.loads(manifest_file.read_text())
+        repaired_slice = updated_manifest["questions"][0]["parts"][0]["slices"][0]
+        self.assertEqual(repaired_slice["ymin"], 200)
 
 
 if __name__ == "__main__":

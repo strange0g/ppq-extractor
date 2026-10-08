@@ -33,11 +33,11 @@ A specific sub-component of a question denoted by letters or roman numerals (e.g
 _Avoid_: Sub-question, subpart
 
 **Question Preamble Image**:
-An extracted image asset containing the introductory context, formulas, or diagrams of a question preceding the question parts (e.g., `q01_preamble.png`).
+An extracted image asset containing the introductory context, formulas, or diagrams of a question preceding the question parts (e.g., `preamble.png` under `questions/q{NN}/`).
 _Avoid_: Stem crop, header snippet
 
 **Question Part Image**:
-An extracted image asset containing an individual Question Part (e.g., `q01_a.png`), strictly isolating that specific sub-component without prepending the question preamble.
+An extracted image asset containing an individual Question Part (e.g., `part_a.png` under `questions/q{NN}/`), strictly isolating that specific sub-component without prepending the question preamble.
 _Avoid_: Subpart snippet, partial crop
 
 **Question Package**:
@@ -45,7 +45,7 @@ A structured bundle representing a complete question, encapsulating its Question
 _Avoid_: Question folder, problem bundle
 
 **Composite Question Image**:
-A stitched, unified image asset of an entire question (`q01_full.png`) containing all preamble and Question Parts tightly joined with student answer workspace excised.
+A stitched, unified image asset of an entire question (`full.png` under `questions/q{NN}/`) containing all preamble and Question Parts tightly joined with student answer workspace excised.
 _Avoid_: Merged image, stitched page
 
 **Full-Width Crop**:

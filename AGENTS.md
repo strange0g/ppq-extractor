@@ -46,6 +46,9 @@ Agents must use the deterministic CLI tools provided in the repository instead o
    # Poll next paper for extractor or verifier
    python3 -m tools.queue_manager next --role {extractor,verifier}
 
+   # Show details of a paper in the queue ledger
+   python3 -m tools.queue_manager show --id <PAPER_ID>
+
    # Update paper status in the queue ledger
    python3 -m tools.queue_manager update --id <PAPER_ID> --status {extracted,verified,needs_rework} [--notes "<NOTES>"] [--extracted-marks <MARKS>]
 

@@ -46,7 +46,7 @@ Inspect each Question Package under `<output_dir>/questions/q{NN}/`:
   - Ensure the upward safety buffer was applied so that question numbers and headings are never clipped or excised.
 - **Decoupled Asset Integrity**:
   - `preamble.png`: Present if the question has stem introductory context or diagrams; contains only the stem content.
-  - `part_{label}.png`: Isolated Question Part Images containing strictly that subpart prompt and its mark tag, without repeating the preamble.
+  - `part_{label}.png`: Isolated Question Part Images containing strictly that Question Part prompt and its mark tag, without repeating the preamble.
   - `full.png`: Composite Question Image containing preamble and all parts neatly stitched with 20px dividers.
 - **Clipping Check**: Ensure mathematical superscripts, exponents, fractions, square root bars, and right-margin mark brackets (`[X]`) are NOT clipped at top or bottom boundaries.
 - **Answer Workspace Check**: Ensure dotted, dashed, or ruled answer workspace lines are completely excised from the bottom of every crop.
@@ -76,7 +76,7 @@ When minor discrepancies or coordinate flaws are identified:
 
 #### Scenario A: Verification Passed (or Successfully Repaired)
 1. Update `<output_dir>/manifest.json`:
-   - Set `"verification.status": "approved"`
+   - Set `"verification.status": "verified"`
    - Record verification timestamp and audit checklist results (`mark_sum_match: true`, `clipping_free: true`, `workspace_excised: true`, `question_numbers_intact: true`).
 2. Update the master Processing Queue ledger via the CLI:
    ```bash

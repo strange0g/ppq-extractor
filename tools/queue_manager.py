@@ -29,6 +29,69 @@ QP_FILENAME_PATTERN = re.compile(
     r"^([a-zA-Z0-9]+)_([a-zA-Z]+)(\d{2})_qp_(\d+)\.pdf$"
 )
 
+CAIE_SESSION_MAP: dict[str, str] = {
+    "m": "feb_march",
+    "s": "may_june",
+    "w": "oct_nov",
+}
+
+
+def get_session_slug(session: str) -> str:
+    """Map CAIE single-letter session code to human-readable slug.
+
+    'm' -> 'feb_march'
+    's' -> 'may_june'
+    'w' -> 'oct_nov'
+    """
+    return CAIE_SESSION_MAP.get(session.lower(), session.lower())
+
+
+def get_paper_output_dir(
+    syllabus: str | int,
+    year: int,
+    session: str,
+    paper_code: str | int,
+) -> str:
+    """Construct standard CAIE output directory for a paper.
+
+    Format: data/extracted/<syllabus>/<year>/<session_slug>/paper_<paper_code>
+    """
+    session_slug = get_session_slug(str(session))
+    return f"data/extracted/{syllabus}/{year}/{session_slug}/paper_{paper_code}"
+
+
+def normalize_paper_entry(paper: dict[str, Any]) -> dict[str, Any]:
+    """Ensure paper entry conforms to standard CAIE directory taxonomy."""
+    if "session" in paper and "session_slug" not in paper:
+        paper["session_slug"] = get_session_slug(str(paper["session"]))
+    if (
+        "syllabus" in paper
+        and "year" in paper
+        and "session" in paper
+        and ("component" in paper or "output_dir" in paper)
+    ):
+        paper_code = None
+        if paper.get("variant") is not None:
+            paper_code = f"{paper['component']}{paper['variant']}"
+        elif paper.get("component") is not None:
+            paper_code = str(paper["component"])
+        elif "output_dir" in paper:
+            parts = str(paper["output_dir"]).rstrip("/").split("/")
+            if parts:
+                last_part = parts[-1]
+                if last_part.startswith("paper_"):
+                    paper_code = last_part.replace("paper_", "")
+                else:
+                    paper_code = last_part
+
+        if paper_code:
+            expected_output_dir = get_paper_output_dir(
+                paper["syllabus"], paper["year"], paper["session"], paper_code
+            )
+            if paper.get("output_dir") != expected_output_dir:
+                paper["output_dir"] = expected_output_dir
+    return paper
+
 
 def determine_mode(total_pages: int, year: int) -> str:
     """Determine extraction mode: compact (pre-2017 / <=9 pages) vs write_in."""
@@ -115,12 +178,13 @@ def parse_paper_metadata(
         component = int(paper_code[0])
         variant = None
 
+    session_slug = get_session_slug(session)
     if total_pages is None:
         total_pages = get_pdf_page_count(path)
 
     mode = determine_mode(total_pages, year)
     expected_marks = determine_expected_marks(syllabus, component)
-    output_dir = f"data/extracted/{syllabus}/{year}_{session}/{paper_code}"
+    output_dir = get_paper_output_dir(syllabus, year, session, paper_code)
 
     # Determine relative source_pdf path
     try:
@@ -139,6 +203,7 @@ def parse_paper_metadata(
         "syllabus": syllabus,
         "year": year,
         "session": session,
+        "session_slug": session_slug,
         "component": component,
         "variant": variant,
         "source_pdf": source_pdf,
@@ -177,7 +242,10 @@ def load_queue(queue_file: str | Path) -> dict[str, Any]:
     path = Path(queue_file)
     if path.is_file():
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        for p in data.get("papers", []):
+            normalize_paper_entry(p)
+        return data
     return {
         "$schema": SCHEMA_URL,
         "version": QUEUE_VERSION,
@@ -191,6 +259,14 @@ def load_queue(queue_file: str | Path) -> dict[str, Any]:
         },
         "papers": [],
     }
+
+
+def get_paper(queue_data: dict[str, Any], paper_id: str) -> dict[str, Any] | None:
+    """Find paper in queue by ID."""
+    for p in queue_data.get("papers", []):
+        if p.get("id") == paper_id:
+            return p
+    return None
 
 
 def save_queue(queue_file: str | Path, queue_data: dict[str, Any]) -> None:
@@ -379,6 +455,19 @@ def main(argv: list[str] | None = None) -> int:
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
     )
 
+    # Subcommand: show
+    show_parser = subparsers.add_parser(
+        "show", help="Show details of a paper or queue summary"
+    )
+    show_parser.add_argument(
+        "--id", default=None, dest="paper_id", help="Paper ID to inspect"
+    )
+    show_parser.add_argument(
+        "--queue-file",
+        default=".pipeline/queue.json",
+        help="Queue ledger JSON path (default: .pipeline/queue.json)",
+    )
+
     args = parser.parse_args(argv)
 
     if args.subcommand == "scan":
@@ -427,6 +516,23 @@ def main(argv: list[str] | None = None) -> int:
         save_queue(args.queue_file, queue_data)
         print(f"Paper '{args.paper_id}' successfully updated to '{args.status}'.")
         return 0
+
+    elif args.subcommand == "show":
+        queue_file = Path(args.queue_file)
+        if not queue_file.is_file():
+            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
+            return 1
+        queue_data = load_queue(args.queue_file)
+        if args.paper_id:
+            paper = get_paper(queue_data, args.paper_id)
+            if paper is None:
+                sys.stderr.write(f"Paper '{args.paper_id}' not found in queue.\n")
+                return 1
+            print(json.dumps(paper, indent=2))
+            return 0
+        else:
+            print(json.dumps(queue_data, indent=2))
+            return 0
 
     return 0
 

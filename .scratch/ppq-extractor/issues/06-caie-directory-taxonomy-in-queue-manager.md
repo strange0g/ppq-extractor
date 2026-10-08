@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Paper scanning maps Cambridge series codes (`m`, `s`, `w`) to human-readable session slugs (`feb_march`, `may_june`, `oct_nov`).
-- [ ] Queue paper records construct `output_dir` in the format `data/extracted/<syllabus>/<year>/<session_slug>/paper_<paper_code>`.
-- [ ] Queue manager commands (`scan`, `next`, `update`, `show`) resolve and operate on the standardized paths deterministically.
-- [ ] Unit tests in `tests/test_queue.py` verify path generation, paper discovery, and queue serialization against the new directory taxonomy.
+- [x] Paper scanning maps Cambridge series codes (`m`, `s`, `w`) to human-readable session slugs (`feb_march`, `may_june`, `oct_nov`).
+- [x] Queue paper records construct `output_dir` in the format `data/extracted/<syllabus>/<year>/<session_slug>/paper_<paper_code>`.
+- [x] Queue manager commands (`scan`, `next`, `update`, `show`) resolve and operate on the standardized paths deterministically.
+- [x] Unit tests in `tests/test_queue.py` verify path generation, paper discovery, and queue serialization against the new directory taxonomy.

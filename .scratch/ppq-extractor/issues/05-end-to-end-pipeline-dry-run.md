@@ -4,11 +4,11 @@
 
 **Blocked by:** 04: Autonomous Prompts Suite & AGENTS.md Guidelines
 
-**Status:** claimed
+**Status:** resolved
 
-- [ ] Complete PDF page images are rendered into `data/extracted/9709/2024_w/12/pages/`.
-- [ ] Representative questions are extracted with standalone subpart crops (`qXX_a.png`) and composite full question crops (`qXX_full.png`) in `crops/`.
-- [ ] Cropped images have identical horizontal width ($W$) and zero dotted answer workspace lines.
-- [ ] `manifest.json` matches the prototype schema with questions, subparts, marks, and verification checks.
-- [ ] Mark-sum invariant check passes (sums to expected paper marks).
-- [ ] Queue entry in `.pipeline/queue.json` transitions cleanly to `verified`.
+- [x] Complete PDF page images are rendered into `data/extracted/9709/2024_w/12/pages/`.
+- [x] Representative questions are extracted with standalone subpart crops (`qXX_a.png`) and composite full question crops (`qXX_full.png`) in `crops/`.
+- [x] Cropped images have identical horizontal width ($W$) and zero dotted answer workspace lines.
+- [x] `manifest.json` matches the prototype schema with questions, subparts, marks, and verification checks.
+- [x] Mark-sum invariant check passes (sums to expected paper marks).
+- [x] Queue entry in `.pipeline/queue.json` transitions cleanly to `verified`.

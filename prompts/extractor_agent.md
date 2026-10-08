@@ -61,7 +61,7 @@ This populates two-tier Question Packages under `<output_dir>/questions/q{NN}/`:
 - `preamble.png`: Question Preamble Image (when preamble is present).
 - `part_{label}.png`: Isolated Question Part Images (e.g., `part_a.png`, `part_b.png`) strictly without prepending preamble.
 - `full.png`: Composite Question Image stitching preamble and all parts with 20px white divider spacing and student answer workspaces excised.
-- `question.json`: Atomic item-level metadata descriptor declaring question ID, total marks, preamble metadata, and subparts with `context_dependencies: ["preamble"]`.
+- `question.json`: Atomic item-level metadata descriptor declaring question ID, total marks, preamble metadata, and Question Parts with `context_dependencies: ["preamble"]`.
 
 Verify Question Package integrity:
 - Confirm `<output_dir>/manifest.json` is updated with `question_index` linking each question package.

@@ -13,9 +13,9 @@ from PIL import Image, ImageDraw
 
 try:
     from tools.crop_slices import (
+        _format_part_naming,
         crop_and_stitch,
         translate_coordinates,
-        _format_part_naming,
     )
 except ImportError:
     crop_and_stitch = None
@@ -44,7 +44,9 @@ class TestCropSlices(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _create_synthetic_page(self, page_num: int, bg_color: tuple[int, int, int]) -> Path:
+    def _create_synthetic_page(
+        self, page_num: int, bg_color: tuple[int, int, int]
+    ) -> Path:
         img = Image.new("RGB", (self.page_width, self.page_height), bg_color)
         draw = ImageDraw.Draw(img)
         # Add distinctive markers across the page vertically
@@ -149,16 +151,24 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
 
         q1_dir = self.crops_dir / "questions" / "q01"
-        self.assertTrue(q1_dir.is_dir(), f"Question package dir {q1_dir} does not exist")
+        self.assertTrue(
+            q1_dir.is_dir(), f"Question package dir {q1_dir} does not exist"
+        )
 
         preamble_path = q1_dir / "preamble.png"
-        self.assertTrue(preamble_path.is_file(), f"Expected preamble {preamble_path} not found")
+        self.assertTrue(
+            preamble_path.is_file(), f"Expected preamble {preamble_path} not found"
+        )
 
         part_img_path = q1_dir / "part_a.png"
-        self.assertTrue(part_img_path.is_file(), f"Expected isolated part {part_img_path} not found")
+        self.assertTrue(
+            part_img_path.is_file(), f"Expected isolated part {part_img_path} not found"
+        )
 
         with Image.open(preamble_path) as im_p:
             self.assertEqual(im_p.size, (1000, 220))
@@ -225,10 +235,14 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
 
         composite_path = self.crops_dir / "questions" / "q01" / "full.png"
-        self.assertTrue(composite_path.is_file(), f"Composite crop not found: {composite_path}")
+        self.assertTrue(
+            composite_path.is_file(), f"Composite crop not found: {composite_path}"
+        )
 
         with Image.open(composite_path) as im:
             # 3 slices: preamble (220) + divider (20) + part a (220) + divider (20) + part b (220) = 700
@@ -281,11 +295,16 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
 
         q2_dir = self.crops_dir / "questions" / "q02"
         self.assertTrue(q2_dir.is_dir())
-        self.assertFalse((q2_dir / "preamble.png").exists(), "preamble.png should not exist when has_preamble is False")
+        self.assertFalse(
+            (q2_dir / "preamble.png").exists(),
+            "preamble.png should not exist when has_preamble is False",
+        )
 
         part_img = q2_dir / "part_a.png"
         comp_img = q2_dir / "full.png"
@@ -339,7 +358,9 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
 
         # Read back updated manifest from disk
         updated = json.loads(manifest_file.read_text())
@@ -367,7 +388,9 @@ class TestCropSlices(unittest.TestCase):
 
         # Verify atomic question.json file
         q_json_path = self.crops_dir / "questions" / "q01" / "question.json"
-        self.assertTrue(q_json_path.is_file(), f"question.json not found at {q_json_path}")
+        self.assertTrue(
+            q_json_path.is_file(), f"question.json not found at {q_json_path}"
+        )
         q_data = json.loads(q_json_path.read_text())
 
         self.assertEqual(q_data["id"], "test_paper_04_q01")
@@ -444,7 +467,9 @@ class TestCropSlices(unittest.TestCase):
         self.assertIn("crops_count", output)
         self.assertTrue((self.crops_dir / "questions" / "q01" / "part_a.png").is_file())
         self.assertTrue((self.crops_dir / "questions" / "q01" / "full.png").is_file())
-        self.assertTrue((self.crops_dir / "questions" / "q01" / "question.json").is_file())
+        self.assertTrue(
+            (self.crops_dir / "questions" / "q01" / "question.json").is_file()
+        )
 
     def test_invalid_coordinates_raise_error(self):
         """Test invalid coordinates raise ValueError."""
@@ -459,7 +484,9 @@ class TestCropSlices(unittest.TestCase):
         with self.assertRaises(ValueError):
             translate_coordinates(ymin=-10, ymax=200, page_width=1000, page_height=2000)
         with self.assertRaises(ValueError):
-            translate_coordinates(ymin=100, ymax=1001, page_width=1000, page_height=2000)
+            translate_coordinates(
+                ymin=100, ymax=1001, page_width=1000, page_height=2000
+            )
 
     def test_end_to_end_multi_part_and_composite(self):
         """End-to-end test validating multi-part questions, preamble attachment, and composite stitching."""
@@ -534,7 +561,9 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        result = crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["questions_processed"], 2)
         # Q1 has preamble, part a, part b, composite (4). Q2 has part a, composite (2). Total = 6.
@@ -558,8 +587,12 @@ class TestCropSlices(unittest.TestCase):
         # Check updated manifest
         updated = json.loads(manifest_file.read_text())
         self.assertEqual(len(updated["question_index"]), 2)
-        self.assertEqual(updated["question_index"][0]["package_path"], "questions/q01/question.json")
-        self.assertEqual(updated["question_index"][1]["package_path"], "questions/q02/question.json")
+        self.assertEqual(
+            updated["question_index"][0]["package_path"], "questions/q01/question.json"
+        )
+        self.assertEqual(
+            updated["question_index"][1]["package_path"], "questions/q02/question.json"
+        )
 
     def test_multi_slice_preamble_and_standalone_whole_question(self):
         """Test handling of multi-slice preambles and standalone whole questions."""
@@ -576,9 +609,7 @@ class TestCropSlices(unittest.TestCase):
                     "parts": [
                         {
                             "label": "(a)",
-                            "slices": [
-                                {"page": 2, "box_1000": [200, 0, 300, 1000]}
-                            ],
+                            "slices": [{"page": 2, "box_1000": [200, 0, 300, 1000]}],
                         }
                     ],
                 },
@@ -594,7 +625,9 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest_multi.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        result = crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20)
+        result = crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, pad=10, spacing=20
+        )
         self.assertEqual(result["status"], "success")
 
         # Q1 has preamble.png, part_a.png, full.png, question.json
@@ -608,27 +641,37 @@ class TestCropSlices(unittest.TestCase):
         q2_dir = self.crops_dir / "questions" / "q02"
         self.assertTrue((q2_dir / "full.png").is_file())
         self.assertTrue((q2_dir / "question.json").is_file())
-        self.assertTrue((q2_dir / "part.png").is_file() or (q2_dir / "part_whole.png").is_file() or (q2_dir / "part_1.png").is_file())
+        self.assertTrue(
+            (q2_dir / "part.png").is_file()
+            or (q2_dir / "part_whole.png").is_file()
+            or (q2_dir / "part_1.png").is_file()
+        )
 
     def test_format_part_naming_helper(self):
         """Test _format_part_naming helper cleans labels and formats ids."""
         # Labeled part
         part = {"label": "(a)", "part_label": "a"}
-        filename, label, part_id = _format_part_naming(part, idx=1, total_parts=2, q_id="paper_q01")
+        filename, label, part_id = _format_part_naming(
+            part, idx=1, total_parts=2, q_id="paper_q01"
+        )
         self.assertEqual(filename, "part_a.png")
         self.assertEqual(label, "a")
         self.assertEqual(part_id, "paper_q01_a")
 
         # Single part with empty label
         part_single = {"label": ""}
-        filename, label, part_id = _format_part_naming(part_single, idx=1, total_parts=1, q_id="paper_q01")
+        filename, label, part_id = _format_part_naming(
+            part_single, idx=1, total_parts=1, q_id="paper_q01"
+        )
         self.assertEqual(filename, "part.png")
         self.assertEqual(label, "")
         self.assertEqual(part_id, "paper_q01_p1")
 
         # Multiple parts with empty label
         part_num = {"label": None}
-        filename, label, part_id = _format_part_naming(part_num, idx=2, total_parts=3, q_id="paper_q01")
+        filename, label, part_id = _format_part_naming(
+            part_num, idx=2, total_parts=3, q_id="paper_q01"
+        )
         self.assertEqual(filename, "part_2.png")
         self.assertEqual(label, "2")
         self.assertEqual(part_id, "paper_q01_p2")
@@ -675,7 +718,15 @@ class TestCropSlices(unittest.TestCase):
                         {
                             "label": "a",
                             "marks": 5,
-                            "slices": [{"page": 1, "ymin": 100, "xmin": 0, "ymax": 200, "xmax": 1000}],
+                            "slices": [
+                                {
+                                    "page": 1,
+                                    "ymin": 100,
+                                    "xmin": 0,
+                                    "ymax": 200,
+                                    "xmax": 1000,
+                                }
+                            ],
                         }
                     ],
                 }
@@ -709,7 +760,15 @@ class TestCropSlices(unittest.TestCase):
                         {
                             "label": "a",
                             "marks": 3,
-                            "slices": [{"page": 1, "ymin": 300, "xmin": 0, "ymax": 400, "xmax": 1000}],
+                            "slices": [
+                                {
+                                    "page": 1,
+                                    "ymin": 300,
+                                    "xmin": 0,
+                                    "ymax": 400,
+                                    "xmax": 1000,
+                                }
+                            ],
                         }
                     ],
                 }
@@ -723,7 +782,9 @@ class TestCropSlices(unittest.TestCase):
         q1_json_file = self.crops_dir / "questions" / "q01" / "question.json"
         self.assertTrue(q1_json_file.is_file())
 
-        with Image.open(self.crops_dir / "questions" / "q01" / "part_a.png") as part_img_initial:
+        with Image.open(
+            self.crops_dir / "questions" / "q01" / "part_a.png"
+        ) as part_img_initial:
             initial_height = part_img_initial.height
 
         # Simulate Verifier applying upward safety buffer directly in question.json
@@ -735,7 +796,9 @@ class TestCropSlices(unittest.TestCase):
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
 
         # Verify new crop used coordinates from question.json
-        with Image.open(self.crops_dir / "questions" / "q01" / "part_a.png") as part_img_repaired:
+        with Image.open(
+            self.crops_dir / "questions" / "q01" / "part_a.png"
+        ) as part_img_repaired:
             self.assertGreater(part_img_repaired.height, initial_height)
 
         # Verify updated manifest in sync with question.json coordinates
@@ -746,4 +809,3 @@ class TestCropSlices(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

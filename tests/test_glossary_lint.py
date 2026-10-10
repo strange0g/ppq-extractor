@@ -7,21 +7,29 @@ and do not contain prohibited terms (e.g., 'subpart', 'stem crop', etc.).
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import unittest
+from pathlib import Path
 
 PROHIBITED_PATTERNS = [
     # (pattern, explanation, replacement)
     (r"\bsubpart\b", "Prohibited term 'subpart'", "Question Part"),
     (r"\bsubparts\b", "Prohibited term 'subparts'", "Question Parts"),
     (r"\bstem crop\b", "Prohibited term 'stem crop'", "Question Preamble Image"),
-    (r"\bheader snippet\b", "Prohibited term 'header snippet'", "Question Preamble Image"),
+    (
+        r"\bheader snippet\b",
+        "Prohibited term 'header snippet'",
+        "Question Preamble Image",
+    ),
     (r"\bpartial crop\b", "Prohibited term 'partial crop'", "Question Part Image"),
     (r"\bquestion folder\b", "Prohibited term 'question folder'", "Question Package"),
     (r"\bproblem bundle\b", "Prohibited term 'problem bundle'", "Question Package"),
     (r"\bmerged image\b", "Prohibited term 'merged image'", "Composite Question Image"),
-    (r"\bstitched page\b", "Prohibited term 'stitched page'", "Composite Question Image"),
+    (
+        r"\bstitched page\b",
+        "Prohibited term 'stitched page'",
+        "Composite Question Image",
+    ),
     (r"\btight box\b", "Prohibited term 'tight box'", "Full-Width Crop"),
     (r"\bdead zone\b", "Prohibited term 'dead zone'", "Answer Workspace"),
     (r"\bjob table\b", "Prohibited term 'job table'", "Processing Queue"),
@@ -39,7 +47,9 @@ class TestGlossaryLint(unittest.TestCase):
 
     def test_prompts_do_not_contain_prohibited_terms(self):
         """Ensure all prompt files obey GLOSSARY.md terminology prohibitions."""
-        self.assertTrue(self.prompts_dir.is_dir(), f"Missing prompts directory: {self.prompts_dir}")
+        self.assertTrue(
+            self.prompts_dir.is_dir(), f"Missing prompts directory: {self.prompts_dir}"
+        )
 
         violations: list[str] = []
         for prompt_file in self.prompts_dir.glob("*.md"):

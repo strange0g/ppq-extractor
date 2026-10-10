@@ -19,23 +19,21 @@ Validates the full autonomous pipeline against Cambridge 9709 Question Paper (97
 from __future__ import annotations
 
 import json
-import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+
 import numpy as np
 from PIL import Image
 
+from tools.crop_slices import crop_and_stitch
 from tools.pdf_to_images import render_pdf_to_images
-from tools.crop_slices import crop_and_stitch, translate_coordinates
 from tools.queue_manager import (
+    get_next_paper,
     load_queue,
     save_queue,
     scan_queue,
-    get_next_paper,
     update_paper_status,
 )
 
@@ -44,9 +42,19 @@ def find_sample_pdf() -> Path | None:
     """Locate the 9709_w24_qp_12.pdf past paper in local environment."""
     candidates = [
         Path.cwd() / "9709" / "2024" / "2024 Nov" / "9709_w24_qp_12.pdf",
-        Path(__file__).resolve().parent.parent / "9709" / "2024" / "2024 Nov" / "9709_w24_qp_12.pdf",
-        Path(__file__).resolve().parent.parent.parent / "9709" / "2024" / "2024 Nov" / "9709_w24_qp_12.pdf",
-        Path("/home/raied/Programming/ppq-extractor/9709/2024/2024 Nov/9709_w24_qp_12.pdf"),
+        Path(__file__).resolve().parent.parent
+        / "9709"
+        / "2024"
+        / "2024 Nov"
+        / "9709_w24_qp_12.pdf",
+        Path(__file__).resolve().parent.parent.parent
+        / "9709"
+        / "2024"
+        / "2024 Nov"
+        / "9709_w24_qp_12.pdf",
+        Path(
+            "/home/raied/Programming/ppq-extractor/9709/2024/2024 Nov/9709_w24_qp_12.pdf"
+        ),
     ]
     for c in candidates:
         if c.is_file():
@@ -72,19 +80,45 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 1,
                 "has_preamble": True,
-                "preamble_slice": {"page": 2, "ymin": 74, "xmin": 0, "ymax": 397, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 2,
+                    "ymin": 74,
+                    "xmin": 0,
+                    "ymax": 397,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 3,
-                        "slices": [{"page": 2, "ymin": 412, "xmin": 0, "ymax": 438, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 2,
+                                "ymin": 412,
+                                "xmin": 0,
+                                "ymax": 438,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 2,
                         "slices": [
-                            {"page": 2, "ymin": 720, "xmin": 0, "ymax": 794, "xmax": 1000},
-                            {"page": 2, "ymin": 859, "xmin": 0, "ymax": 887, "xmax": 1000},
+                            {
+                                "page": 2,
+                                "ymin": 720,
+                                "xmin": 0,
+                                "ymax": 794,
+                                "xmax": 1000,
+                            },
+                            {
+                                "page": 2,
+                                "ymin": 859,
+                                "xmin": 0,
+                                "ymax": 887,
+                                "xmax": 1000,
+                            },
                         ],
                     },
                 ],
@@ -93,17 +127,39 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 2,
                 "has_preamble": True,
-                "preamble_slice": {"page": 3, "ymin": 77, "xmin": 0, "ymax": 92, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 3,
+                    "ymin": 77,
+                    "xmin": 0,
+                    "ymax": 92,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 2,
-                        "slices": [{"page": 3, "ymin": 108, "xmin": 0, "ymax": 130, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 3,
+                                "ymin": 108,
+                                "xmin": 0,
+                                "ymax": 130,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 3,
-                        "slices": [{"page": 3, "ymin": 349, "xmin": 0, "ymax": 407, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 3,
+                                "ymin": 349,
+                                "xmin": 0,
+                                "ymax": 407,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 5,
@@ -111,17 +167,39 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 3,
                 "has_preamble": True,
-                "preamble_slice": {"page": 4, "ymin": 79, "xmin": 0, "ymax": 108, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 4,
+                    "ymin": 79,
+                    "xmin": 0,
+                    "ymax": 108,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 3,
-                        "slices": [{"page": 4, "ymin": 125, "xmin": 0, "ymax": 148, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 4,
+                                "ymin": 125,
+                                "xmin": 0,
+                                "ymax": 148,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 2,
-                        "slices": [{"page": 4, "ymin": 460, "xmin": 0, "ymax": 503, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 4,
+                                "ymin": 460,
+                                "xmin": 0,
+                                "ymax": 503,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 5,
@@ -129,17 +207,39 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 4,
                 "has_preamble": True,
-                "preamble_slice": {"page": 5, "ymin": 76, "xmin": 0, "ymax": 91, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 5,
+                    "ymin": 76,
+                    "xmin": 0,
+                    "ymax": 91,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 2,
-                        "slices": [{"page": 5, "ymin": 110, "xmin": 0, "ymax": 148, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 5,
+                                "ymin": 110,
+                                "xmin": 0,
+                                "ymax": 148,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 4,
-                        "slices": [{"page": 5, "ymin": 369, "xmin": 0, "ymax": 418, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 5,
+                                "ymin": 369,
+                                "xmin": 0,
+                                "ymax": 418,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 6,
@@ -147,20 +247,46 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 5,
                 "has_preamble": True,
-                "preamble_slice": {"page": 6, "ymin": 77, "xmin": 0, "ymax": 103, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 6,
+                    "ymin": 77,
+                    "xmin": 0,
+                    "ymax": 103,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 7,
                         "slices": [
-                            {"page": 6, "ymin": 127, "xmin": 0, "ymax": 152, "xmax": 1000},
-                            {"page": 6, "ymin": 279, "xmin": 0, "ymax": 696, "xmax": 1000},
+                            {
+                                "page": 6,
+                                "ymin": 127,
+                                "xmin": 0,
+                                "ymax": 152,
+                                "xmax": 1000,
+                            },
+                            {
+                                "page": 6,
+                                "ymin": 279,
+                                "xmin": 0,
+                                "ymax": 696,
+                                "xmax": 1000,
+                            },
                         ],
                     },
                     {
                         "label": "b",
                         "marks": 3,
-                        "slices": [{"page": 7, "ymin": 427, "xmin": 0, "ymax": 483, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 7,
+                                "ymin": 427,
+                                "xmin": 0,
+                                "ymax": 483,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 10,
@@ -172,7 +298,15 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                     {
                         "label": "",
                         "marks": 6,
-                        "slices": [{"page": 8, "ymin": 82, "xmin": 0, "ymax": 463, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 8,
+                                "ymin": 82,
+                                "xmin": 0,
+                                "ymax": 463,
+                                "xmax": 1000,
+                            }
+                        ],
                     }
                 ],
                 "total_question_marks": 6,
@@ -184,12 +318,28 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
                     {
                         "label": "a",
                         "marks": 3,
-                        "slices": [{"page": 10, "ymin": 77, "xmin": 0, "ymax": 121, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 10,
+                                "ymin": 77,
+                                "xmin": 0,
+                                "ymax": 121,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 5,
-                        "slices": [{"page": 10, "ymin": 372, "xmin": 0, "ymax": 666, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 10,
+                                "ymin": 372,
+                                "xmin": 0,
+                                "ymax": 666,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 8,
@@ -197,19 +347,45 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 8,
                 "has_preamble": True,
-                "preamble_slice": {"page": 12, "ymin": 77, "xmin": 0, "ymax": 93, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 12,
+                    "ymin": 77,
+                    "xmin": 0,
+                    "ymax": 93,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 2,
-                        "slices": [{"page": 12, "ymin": 107, "xmin": 0, "ymax": 152, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 12,
+                                "ymin": 107,
+                                "xmin": 0,
+                                "ymax": 152,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 8,
                         "slices": [
-                            {"page": 12, "ymin": 395, "xmin": 0, "ymax": 427, "xmax": 1000},
-                            {"page": 13, "ymin": 76, "xmin": 0, "ymax": 97, "xmax": 1000},
+                            {
+                                "page": 12,
+                                "ymin": 395,
+                                "xmin": 0,
+                                "ymax": 427,
+                                "xmax": 1000,
+                            },
+                            {
+                                "page": 13,
+                                "ymin": 76,
+                                "xmin": 0,
+                                "ymax": 97,
+                                "xmax": 1000,
+                            },
                         ],
                     },
                 ],
@@ -218,17 +394,39 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 9,
                 "has_preamble": True,
-                "preamble_slice": {"page": 14, "ymin": 77, "xmin": 0, "ymax": 104, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 14,
+                    "ymin": 77,
+                    "xmin": 0,
+                    "ymax": 104,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 7,
-                        "slices": [{"page": 14, "ymin": 121, "xmin": 0, "ymax": 176, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 14,
+                                "ymin": 121,
+                                "xmin": 0,
+                                "ymax": 176,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 3,
-                        "slices": [{"page": 15, "ymin": 336, "xmin": 0, "ymax": 391, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 15,
+                                "ymin": 336,
+                                "xmin": 0,
+                                "ymax": 391,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 10,
@@ -236,22 +434,52 @@ def get_ground_truth_manifest(sample_pdf_rel_path: str) -> dict:
             {
                 "number": 10,
                 "has_preamble": True,
-                "preamble_slice": {"page": 16, "ymin": 77, "xmin": 0, "ymax": 108, "xmax": 1000},
+                "preamble_slice": {
+                    "page": 16,
+                    "ymin": 77,
+                    "xmin": 0,
+                    "ymax": 108,
+                    "xmax": 1000,
+                },
                 "parts": [
                     {
                         "label": "a",
                         "marks": 3,
-                        "slices": [{"page": 16, "ymin": 126, "xmin": 0, "ymax": 151, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 16,
+                                "ymin": 126,
+                                "xmin": 0,
+                                "ymax": 151,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "b",
                         "marks": 4,
-                        "slices": [{"page": 16, "ymin": 311, "xmin": 0, "ymax": 336, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 16,
+                                "ymin": 311,
+                                "xmin": 0,
+                                "ymax": 336,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                     {
                         "label": "c",
                         "marks": 3,
-                        "slices": [{"page": 17, "ymin": 77, "xmin": 0, "ymax": 175, "xmax": 1000}],
+                        "slices": [
+                            {
+                                "page": 17,
+                                "ymin": 77,
+                                "xmin": 0,
+                                "ymax": 175,
+                                "xmax": 1000,
+                            }
+                        ],
                     },
                 ],
                 "total_question_marks": 10,
@@ -388,7 +616,9 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertTrue(q1_preamble_path.is_file(), "Question 1 preamble.png missing")
 
         with Image.open(q1_preamble_path) as im_q1_p:
-            self.assertEqual(im_q1_p.width, 1654, "Preamble crop width must be full-width 1654")
+            self.assertEqual(
+                im_q1_p.width, 1654, "Preamble crop width must be full-width 1654"
+            )
             self.assertGreater(im_q1_p.height, 50, "Preamble crop height too small")
             # Visual check for numeral '1' visibility and upward margin buffer
             arr_q1 = np.array(im_q1_p.convert("L"))
@@ -414,7 +644,9 @@ class TestEndToEndPipeline(unittest.TestCase):
             )
 
         with Image.open(q1_dir / "full.png") as im_q1_full:
-            self.assertEqual(im_q1_full.width, 1654, "Composite full.png must have full width 1654")
+            self.assertEqual(
+                im_q1_full.width, 1654, "Composite full.png must have full width 1654"
+            )
             arr_q1_full = np.array(im_q1_full.convert("L"))
             dark_ys_full, _ = np.where(arr_q1_full[:, 130:160] < 128)
             self.assertGreater(
@@ -448,12 +680,13 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertTrue(q10_full_path.is_file(), "Question 10 full.png missing")
         self.assertTrue(q10_json_path.is_file(), "Question 10 question.json missing")
 
-        with Image.open(q10_preamble_path) as im_p10, \
-             Image.open(q10_part_a_path) as im_p10_a, \
-             Image.open(q10_part_b_path) as im_p10_b, \
-             Image.open(q10_part_c_path) as im_p10_c, \
-             Image.open(q10_full_path) as im_p10_full:
-
+        with (
+            Image.open(q10_preamble_path) as im_p10,
+            Image.open(q10_part_a_path) as im_p10_a,
+            Image.open(q10_part_b_path) as im_p10_b,
+            Image.open(q10_part_c_path) as im_p10_c,
+            Image.open(q10_full_path) as im_p10_full,
+        ):
             # All crops maintain full width 1654
             for crop_img, name in [
                 (im_p10, "preamble.png"),
@@ -462,7 +695,9 @@ class TestEndToEndPipeline(unittest.TestCase):
                 (im_p10_c, "part_c.png"),
                 (im_p10_full, "full.png"),
             ]:
-                self.assertEqual(crop_img.width, 1654, f"Q10 {name} width is not full-width 1654")
+                self.assertEqual(
+                    crop_img.width, 1654, f"Q10 {name} width is not full-width 1654"
+                )
                 self.assertGreater(crop_img.height, 40, f"Q10 {name} height too small")
 
             # Isolated part check: part_a must NOT contain preamble
@@ -517,10 +752,14 @@ class TestEndToEndPipeline(unittest.TestCase):
 
         for q_num in range(1, 11):
             q_pkg_dir = questions_dir / f"q{q_num:02d}"
-            self.assertTrue(q_pkg_dir.is_dir(), f"Missing question package dir for q{q_num:02d}")
+            self.assertTrue(
+                q_pkg_dir.is_dir(), f"Missing question package dir for q{q_num:02d}"
+            )
 
             q_json_file = q_pkg_dir / "question.json"
-            self.assertTrue(q_json_file.is_file(), f"Missing question.json for q{q_num:02d}")
+            self.assertTrue(
+                q_json_file.is_file(), f"Missing question.json for q{q_num:02d}"
+            )
 
             q_meta = json.loads(q_json_file.read_text(encoding="utf-8"))
 
@@ -574,7 +813,9 @@ class TestEndToEndPipeline(unittest.TestCase):
             self.assertIn("composite", q_meta)
             self.assertEqual(q_meta["composite"]["asset_path"], "full.png")
             comp_asset_file = q_pkg_dir / "full.png"
-            self.assertTrue(comp_asset_file.is_file(), f"Missing full.png in q{q_num:02d}")
+            self.assertTrue(
+                comp_asset_file.is_file(), f"Missing full.png in q{q_num:02d}"
+            )
             self.assertEqual(q_meta["composite"]["dimensions"]["width"], 1654)
 
             # Taxonomy descriptor
@@ -602,7 +843,9 @@ class TestEndToEndPipeline(unittest.TestCase):
         # Step 8: Mathematical mark-sum invariant audit & queue update
         # -------------------------------------------------------------
         total_extracted_marks = sum(
-            json.loads((questions_dir / f"q{i:02d}" / "question.json").read_text())["total_marks"]
+            json.loads((questions_dir / f"q{i:02d}" / "question.json").read_text())[
+                "total_marks"
+            ]
             for i in range(1, 11)
         )
         self.assertEqual(total_extracted_marks, 75)

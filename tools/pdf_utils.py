@@ -59,4 +59,6 @@ def get_pdf_page_count(pdf_path: str | Path) -> int:
     except Exception:
         pass
 
-    raise ValueError(f"Could not determine page count from pdfinfo or binary inspection for {path}")
+    raise ValueError(
+        f"Could not determine page count from pdfinfo or binary inspection for {path}"
+    )

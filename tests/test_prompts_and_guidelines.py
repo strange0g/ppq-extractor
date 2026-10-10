@@ -1,14 +1,17 @@
 import json
 import re
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 class TestPromptsAndGuidelines(unittest.TestCase):
     def test_extractor_agent_prompt(self):
         prompt_path = REPO_ROOT / "prompts" / "extractor_agent.md"
-        self.assertTrue(prompt_path.exists(), "prompts/extractor_agent.md does not exist")
+        self.assertTrue(
+            prompt_path.exists(), "prompts/extractor_agent.md does not exist"
+        )
         content = prompt_path.read_text(encoding="utf-8")
 
         # Must instruct queue polling via queue_manager CLI
@@ -28,36 +31,40 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         # Direct multimodal LLM in scheduled hourly container (no inner LLM loops)
         self.assertTrue(
             "hourly" in content.lower(),
-            "extractor_agent.md must state scheduled hourly execution"
+            "extractor_agent.md must state scheduled hourly execution",
         )
         self.assertTrue(
             "inner llm" in content.lower(),
-            "extractor_agent.md must clarify no inner LLM API loops"
+            "extractor_agent.md must clarify no inner LLM API loops",
         )
         # Must instruct generating Question Packages and question.json
         self.assertTrue(
             "questions/q" in content or "question package" in content.lower(),
-            "extractor_agent.md must instruct Question Package generation (questions/q{NN})"
+            "extractor_agent.md must instruct Question Package generation (questions/q{NN})",
         )
         self.assertIn("question.json", content)
         self.assertIn("manifest.json", content)
         # Must enforce question number invariant / safety buffer
         self.assertTrue(
             "safety buffer" in content.lower() or "question number" in content.lower(),
-            "extractor_agent.md must enforce question numeral safety buffer"
+            "extractor_agent.md must enforce question numeral safety buffer",
         )
 
     def test_vision_slicing_prompt(self):
         prompt_path = REPO_ROOT / "prompts" / "vision_slicing.md"
-        self.assertTrue(prompt_path.exists(), "prompts/vision_slicing.md does not exist")
+        self.assertTrue(
+            prompt_path.exists(), "prompts/vision_slicing.md does not exist"
+        )
         content = prompt_path.read_text(encoding="utf-8")
 
         # Must specify normalized coordinates 0-1000
         self.assertIn("1000", content)
         # Must mention excising dotted or ruled answer lines
         self.assertTrue(
-            "dotted" in content.lower() or "ruled" in content.lower() or "answer workspace" in content.lower(),
-            "Prompt must mention excising dotted/ruled answer workspace lines"
+            "dotted" in content.lower()
+            or "ruled" in content.lower()
+            or "answer workspace" in content.lower(),
+            "Prompt must mention excising dotted/ruled answer workspace lines",
         )
         # Must isolate preambles from question parts
         self.assertIn("preamble", content.lower())
@@ -65,28 +72,45 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         self.assertIn("Isolate Question Preambles from Question Parts", content)
         # Must mandate question number invariant and upward safety buffer (at least 15 units / px)
         self.assertTrue(
-            "question 1" in content.lower() or "question number" in content.lower() or "numeral" in content.lower(),
-            "vision_slicing.md must reference question numbers / numerals"
+            "question 1" in content.lower()
+            or "question number" in content.lower()
+            or "numeral" in content.lower(),
+            "vision_slicing.md must reference question numbers / numerals",
         )
         self.assertTrue(
-            any(k in content.lower() for k in ["safety buffer", "upward buffer", "15 normalized", "15 units", "15px", "15 px"]),
-            "vision_slicing.md must mandate upward safety buffer of at least 15 units/px for question numerals"
+            any(
+                k in content.lower()
+                for k in [
+                    "safety buffer",
+                    "upward buffer",
+                    "15 normalized",
+                    "15 units",
+                    "15px",
+                    "15 px",
+                ]
+            ),
+            "vision_slicing.md must mandate upward safety buffer of at least 15 units/px for question numerals",
         )
         # Must document Question Package output expectations
         self.assertTrue(
             "question package" in content.lower() or "decoupled" in content.lower(),
-            "vision_slicing.md must document Question Package expectations"
+            "vision_slicing.md must document Question Package expectations",
         )
         # Must return valid JSON schema example
         json_matches = re.findall(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
-        self.assertTrue(len(json_matches) > 0, "vision_slicing.md should have a JSON schema example block")
+        self.assertTrue(
+            len(json_matches) > 0,
+            "vision_slicing.md should have a JSON schema example block",
+        )
         # Ensure the schema block is valid JSON
         parsed = json.loads(json_matches[0])
         self.assertIn("items", parsed)
 
     def test_verifier_agent_prompt(self):
         prompt_path = REPO_ROOT / "prompts" / "verifier_agent.md"
-        self.assertTrue(prompt_path.exists(), "prompts/verifier_agent.md does not exist")
+        self.assertTrue(
+            prompt_path.exists(), "prompts/verifier_agent.md does not exist"
+        )
         content = prompt_path.read_text(encoding="utf-8")
 
         # Must specify queue polling for verifier role
@@ -94,7 +118,7 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         # Scheduled hourly execution
         self.assertTrue(
             "hourly" in content.lower(),
-            "verifier_agent.md must state scheduled hourly execution"
+            "verifier_agent.md must state scheduled hourly execution",
         )
         # Mark-sum invariant verification
         self.assertTrue("mark" in content.lower() and "invariant" in content.lower())
@@ -104,12 +128,12 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         self.assertIn("clipping", content.lower())
         self.assertTrue(
             "question 1" in content.lower() or "question number" in content.lower(),
-            "verifier_agent.md must audit question number visibility (especially question 1)"
+            "verifier_agent.md must audit question number visibility (especially question 1)",
         )
         # Question package and question.json integrity
         self.assertTrue(
             "question package" in content.lower() or "questions/q" in content,
-            "verifier_agent.md must inspect Question Packages"
+            "verifier_agent.md must inspect Question Packages",
         )
         self.assertIn("question.json", content)
         # Autonomous repair loop
@@ -150,14 +174,16 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         # Question packages layout and question.json
         self.assertTrue(
             "questions/q" in content or "question package" in content.lower(),
-            "AGENTS.md must document Question Packages"
+            "AGENTS.md must document Question Packages",
         )
         self.assertIn("question.json", content)
 
         # Question numeral safety invariant
         self.assertTrue(
-            "safety buffer" in content.lower() or "question number" in content.lower() or "numeral" in content.lower(),
-            "AGENTS.md must reference question number safety buffer or invariant"
+            "safety buffer" in content.lower()
+            or "question number" in content.lower()
+            or "numeral" in content.lower(),
+            "AGENTS.md must reference question number safety buffer or invariant",
         )
 
         # CLI Tooling references
@@ -183,15 +209,20 @@ class TestPromptsAndGuidelines(unittest.TestCase):
             "job table": "Processing Queue",
             "database queue": "Processing Queue",
         }
-        for filename in ["vision_slicing.md", "extractor_agent.md", "verifier_agent.md"]:
+        for filename in [
+            "vision_slicing.md",
+            "extractor_agent.md",
+            "verifier_agent.md",
+        ]:
             prompt_file = REPO_ROOT / "prompts" / filename
             content = prompt_file.read_text(encoding="utf-8").lower()
             for forbidden, preferred in forbidden_map.items():
                 self.assertNotIn(
                     forbidden,
                     content,
-                    f"Prompt {filename} contains forbidden term '{forbidden}'. Use '{preferred}' instead."
+                    f"Prompt {filename} contains forbidden term '{forbidden}'. Use '{preferred}' instead.",
                 )
+
 
 if __name__ == "__main__":
     unittest.main()

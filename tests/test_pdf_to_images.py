@@ -1,11 +1,11 @@
 import json
-import os
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
+
 from PIL import Image
 
 try:
@@ -16,14 +16,18 @@ except ImportError:
 
 def find_sample_pdf() -> Path:
     candidates = [
-        Path("/home/raied/Programming/ppq-extractor/9709/2024/2024 Nov/9709_w24_qp_12.pdf"),
+        Path(
+            "/home/raied/Programming/ppq-extractor/9709/2024/2024 Nov/9709_w24_qp_12.pdf"
+        ),
         Path(__file__).resolve().parents[2] / "9709/2024/2024 Nov/9709_w24_qp_12.pdf",
         Path(__file__).resolve().parents[3] / "9709/2024/2024 Nov/9709_w24_qp_12.pdf",
     ]
     for c in candidates:
         if c.exists():
             return c
-    raise FileNotFoundError("Sample Cambridge PDF 9709_w24_qp_12.pdf not found in candidate paths.")
+    raise FileNotFoundError(
+        "Sample Cambridge PDF 9709_w24_qp_12.pdf not found in candidate paths."
+    )
 
 
 MINIMAL_1PAGE_PDF = b"""%PDF-1.4
@@ -45,7 +49,9 @@ startxref
 class TestPdfToImages(unittest.TestCase):
     def setUp(self):
         if render_pdf_to_images is None:
-            self.fail("tools.pdf_to_images module or render_pdf_to_images function not implemented")
+            self.fail(
+                "tools.pdf_to_images module or render_pdf_to_images function not implemented"
+            )
         self.temp_dir = tempfile.TemporaryDirectory()
         self.out_dir = Path(self.temp_dir.name)
 
@@ -64,7 +70,10 @@ class TestPdfToImages(unittest.TestCase):
         # Verify all 20 pages exist and are named page_01.png .. page_20.png
         for i in range(1, 21):
             expected_file = self.out_dir / f"page_{i:02d}.png"
-            self.assertTrue(expected_file.exists(), f"Missing expected page file: {expected_file.name}")
+            self.assertTrue(
+                expected_file.exists(),
+                f"Missing expected page file: {expected_file.name}",
+            )
             with Image.open(expected_file) as im:
                 self.assertEqual(im.size, (1654, 2339))
 
@@ -144,7 +153,6 @@ class TestPdfToImages(unittest.TestCase):
             text=True,
         )
         self.assertNotEqual(proc.returncode, 0)
-
 
     def test_get_pdf_page_count(self):
         from tools.pdf_utils import get_pdf_page_count

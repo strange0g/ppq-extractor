@@ -38,11 +38,13 @@ def detect_page_margin_trim(page_img: Image.Image) -> Tuple[int, int]:
 
     has_left = (
         left_crop.getextrema()[0] < 180
-        and sum(left_crop.histogram()[:180]) / (left_crop.width * left_crop.height) > 0.005
+        and sum(left_crop.histogram()[:180]) / (left_crop.width * left_crop.height)
+        > 0.005
     )
     has_right = (
         right_crop.getextrema()[0] < 180
-        and sum(right_crop.histogram()[:180]) / (right_crop.width * right_crop.height) > 0.005
+        and sum(right_crop.histogram()[:180]) / (right_crop.width * right_crop.height)
+        > 0.005
     )
 
     x1 = left_strip_w if has_left else 0
@@ -229,9 +231,7 @@ def concatenate_vertical(
     return canvas
 
 
-def _get_relative_asset_path(
-    out_file: Path, manifest_path: Path, out_dir: Path
-) -> str:
+def _get_relative_asset_path(out_file: Path, manifest_path: Path, out_dir: Path) -> str:
     """Determine normalized relative asset path for manifest."""
     manifest_dir = manifest_path.resolve().parent
     try:
@@ -254,7 +254,9 @@ def _format_part_naming(
     Returns:
         Tuple of (filename, label, part_id).
     """
-    raw_label = str(part.get("label") or part.get("part_label") or "").strip().strip("()")
+    raw_label = (
+        str(part.get("label") or part.get("part_label") or "").strip().strip("()")
+    )
     clean_label = re.sub(r"[^a-zA-Z0-9_-]", "", raw_label)
     if clean_label:
         filename = f"part_{clean_label}.png"
@@ -300,8 +302,14 @@ def _should_load_from_question_json(
 ) -> bool:
     """Determine whether to load coordinates from question.json instead of manifest."""
     has_pkg_slices = bool(
-        (existing_q_data.get("preamble") and existing_q_data.get("preamble", {}).get("slices"))
-        or (existing_q_data.get("parts") and any(p.get("slices") for p in existing_q_data.get("parts", [])))
+        (
+            existing_q_data.get("preamble")
+            and existing_q_data.get("preamble", {}).get("slices")
+        )
+        or (
+            existing_q_data.get("parts")
+            and any(p.get("slices") for p in existing_q_data.get("parts", []))
+        )
     )
     if not has_pkg_slices:
         return False
@@ -310,7 +318,10 @@ def _should_load_from_question_json(
         manifest_q.get("preamble_slices")
         or manifest_q.get("preamble_slice")
         or manifest_q.get("slices")
-        or (manifest_q.get("parts") and any(p.get("slices") for p in manifest_q.get("parts", [])))
+        or (
+            manifest_q.get("parts")
+            and any(p.get("slices") for p in manifest_q.get("parts", []))
+        )
     )
     if not has_manifest_slices:
         return True
@@ -323,12 +334,18 @@ def _should_load_from_question_json(
     except OSError:
         pass
 
-    q_slices = (
-        (existing_q_data.get("preamble", {}).get("slices") or [])
-        + [s for p in existing_q_data.get("parts", []) for s in p.get("slices", [])]
-    )
+    q_slices = (existing_q_data.get("preamble", {}).get("slices") or []) + [
+        s for p in existing_q_data.get("parts", []) for s in p.get("slices", [])
+    ]
     m_slices = (
-        (manifest_q.get("preamble_slices") or ([manifest_q["preamble_slice"]] if manifest_q.get("preamble_slice") else []))
+        (
+            manifest_q.get("preamble_slices")
+            or (
+                [manifest_q["preamble_slice"]]
+                if manifest_q.get("preamble_slice")
+                else []
+            )
+        )
         + (manifest_q.get("slices") or [])
         + [s for p in manifest_q.get("parts", []) for s in p.get("slices", [])]
     )
@@ -448,14 +465,21 @@ def crop_and_stitch(
             if preamble_slice_list:
                 q["preamble_slices"] = preamble_slice_list
                 q["has_preamble"] = True
-            elif existing_q_data and existing_q_data.get("preamble", {}).get("present") is False:
+            elif (
+                existing_q_data
+                and existing_q_data.get("preamble", {}).get("present") is False
+            ):
                 q["has_preamble"] = False
                 q.pop("preamble_slices", None)
                 q.pop("preamble_slice", None)
 
         preamble_imgs: List[Image.Image] = []
         for p_slice in preamble_slice_list:
-            preamble_imgs.append(_crop_slice(pages_path, p_slice, pad, page_cache, trim_margins=trim_margins))
+            preamble_imgs.append(
+                _crop_slice(
+                    pages_path, p_slice, pad, page_cache, trim_margins=trim_margins
+                )
+            )
 
         preamble_img: Image.Image | None = None
         preamble_meta: Dict[str, Any] = {
@@ -486,7 +510,11 @@ def crop_and_stitch(
             composite_slices.extend(preamble_imgs)
 
         parts: List[Dict[str, Any]] = []
-        if load_from_q_json and isinstance(existing_q_data.get("parts"), list) and existing_q_data["parts"]:
+        if (
+            load_from_q_json
+            and isinstance(existing_q_data.get("parts"), list)
+            and existing_q_data["parts"]
+        ):
             parts = [dict(p) for p in existing_q_data["parts"]]
             q["parts"] = parts
         else:
@@ -510,7 +538,8 @@ def crop_and_stitch(
                 continue
 
             part_slice_imgs = [
-                _crop_slice(pages_path, s, pad, page_cache, trim_margins=trim_margins) for s in slices_info
+                _crop_slice(pages_path, s, pad, page_cache, trim_margins=trim_margins)
+                for s in slices_info
             ]
             part_main_img = concatenate_vertical(part_slice_imgs, spacing=spacing)
 
@@ -529,7 +558,9 @@ def crop_and_stitch(
             generated_crops.append(str(part_file))
 
             # Update part metadata in manifest
-            rel_part_manifest_path = _get_relative_asset_path(part_file, manifest_file, base_out_path)
+            rel_part_manifest_path = _get_relative_asset_path(
+                part_file, manifest_file, base_out_path
+            )
             part["asset_path"] = rel_part_manifest_path
             part["width"] = part_main_img.width
             part["height"] = part_main_img.height
@@ -538,21 +569,25 @@ def crop_and_stitch(
             part_marks = part.get("marks")
             part_context_deps = ["preamble"] if preamble_meta["present"] else []
             # For standalone questions without subdivided parts, inherit question-level topics directly
-            part_topics = part.get("topics") or (q.get("topics") if len(parts) == 1 else []) or []
+            part_topics = (
+                part.get("topics") or (q.get("topics") if len(parts) == 1 else []) or []
+            )
 
-            question_parts_meta.append({
-                "part_id": part_identifier,
-                "label": label_val,
-                "marks": part_marks,
-                "isolated_asset_path": filename,
-                "dimensions": {
-                    "width": part_main_img.width,
-                    "height": part_main_img.height,
-                },
-                "slices": slices_info,
-                "topics": part_topics,
-                "context_dependencies": part_context_deps,
-            })
+            question_parts_meta.append(
+                {
+                    "part_id": part_identifier,
+                    "label": label_val,
+                    "marks": part_marks,
+                    "isolated_asset_path": filename,
+                    "dimensions": {
+                        "width": part_main_img.width,
+                        "height": part_main_img.height,
+                    },
+                    "slices": slices_info,
+                    "topics": part_topics,
+                    "context_dependencies": part_context_deps,
+                }
+            )
 
         # Generate composite question image (preamble + all Question Parts)
         composite_meta: Dict[str, Any] = {
@@ -566,7 +601,9 @@ def crop_and_stitch(
             composite_img.save(comp_file, format="PNG")
             generated_crops.append(str(comp_file))
 
-            rel_comp_path = _get_relative_asset_path(comp_file, manifest_file, base_out_path)
+            rel_comp_path = _get_relative_asset_path(
+                comp_file, manifest_file, base_out_path
+            )
             q["composite_asset_path"] = rel_comp_path
             q["composite_width"] = composite_img.width
             q["composite_height"] = composite_img.height
@@ -578,7 +615,9 @@ def crop_and_stitch(
                     "height": composite_img.height,
                 },
             }
-            rel_composite_asset = _resolve_relative_path(comp_file, paper_dir, base_out_path)
+            rel_composite_asset = _resolve_relative_path(
+                comp_file, paper_dir, base_out_path
+            )
 
         # Calculate question total marks
         if "marks" in q and q["marks"] is not None:
@@ -587,13 +626,18 @@ def crop_and_stitch(
             q_total_marks = int(q["total_question_marks"])
         else:
             q_total_marks = sum(
-                int(p["marks"]) for p in question_parts_meta if p.get("marks") is not None
+                int(p["marks"])
+                for p in question_parts_meta
+                if p.get("marks") is not None
             )
 
         # Aggregate topics across question parts and question root
-        q_topics = list(dict.fromkeys(
-            (q.get("topics") or []) + [t for p in question_parts_meta for t in (p.get("topics") or [])]
-        ))
+        q_topics = list(
+            dict.fromkeys(
+                (q.get("topics") or [])
+                + [t for p in question_parts_meta for t in (p.get("topics") or [])]
+            )
+        )
 
         # Atomic question.json
         q_json_file = q_pkg_dir / "question.json"
@@ -607,7 +651,9 @@ def crop_and_stitch(
             "composite": composite_meta,
             "taxonomy": {
                 "topics": q_topics,
-                "has_diagram": bool(preamble_meta["present"] or q.get("has_diagram", False)),
+                "has_diagram": bool(
+                    preamble_meta["present"] or q.get("has_diagram", False)
+                ),
             },
         }
         q_json_file.write_text(json.dumps(q_json_content, indent=2), encoding="utf-8")
@@ -616,20 +662,24 @@ def crop_and_stitch(
         # and composite_asset: "questions/q{NN}/full.png" relative to paper root
         rel_pkg_path = _resolve_relative_path(q_json_file, paper_dir, base_out_path)
 
-        question_index.append({
-            "question_number": q_num,
-            "package_path": rel_pkg_path,
-            "total_marks": q_total_marks,
-            "composite_asset": rel_composite_asset,
-        })
+        question_index.append(
+            {
+                "question_number": q_num,
+                "package_path": rel_pkg_path,
+                "total_marks": q_total_marks,
+                "composite_asset": rel_composite_asset,
+            }
+        )
 
     # Update verification block if present
-    if "verification" in manifest_data and isinstance(manifest_data["verification"], dict):
+    if "verification" in manifest_data and isinstance(
+        manifest_data["verification"], dict
+    ):
         total_extracted_marks = sum(item["total_marks"] for item in question_index)
         manifest_data["verification"]["extracted_marks"] = total_extracted_marks
-        manifest_data["verification"]["balance_check"] = (
-            manifest_data["verification"]["extracted_marks"] == manifest_data["verification"].get("expected_marks")
-        )
+        manifest_data["verification"]["balance_check"] = manifest_data["verification"][
+            "extracted_marks"
+        ] == manifest_data["verification"].get("expected_marks")
 
     # Update paper-level manifest
     manifest_data["question_index"] = question_index

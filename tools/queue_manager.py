@@ -11,13 +11,12 @@ Provides CLI subcommands:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import re
-import subprocess
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from tools.pdf_utils import get_pdf_page_count
@@ -25,9 +24,7 @@ from tools.pdf_utils import get_pdf_page_count
 SCHEMA_URL = "https://json-schema.org/draft/2020-12/schema"
 QUEUE_VERSION = "1.0"
 VALID_STATUSES = {"unprocessed", "extracted", "verified", "needs_rework"}
-QP_FILENAME_PATTERN = re.compile(
-    r"^([a-zA-Z0-9]+)_([a-zA-Z]+)(\d{2})_qp_(\d+)\.pdf$"
-)
+QP_FILENAME_PATTERN = re.compile(r"^([a-zA-Z0-9]+)_([a-zA-Z]+)(\d{2})_qp_(\d+)\.pdf$")
 
 CAIE_SESSION_MAP: dict[str, str] = {
     "m": "feb_march",
@@ -359,7 +356,9 @@ def update_paper_status(
 ) -> dict[str, Any]:
     """Atomically update a paper's status, notes, and timestamps."""
     if status not in VALID_STATUSES:
-        raise ValueError(f"Invalid status: '{status}'. Valid statuses are: {VALID_STATUSES}")
+        raise ValueError(
+            f"Invalid status: '{status}'. Valid statuses are: {VALID_STATUSES}"
+        )
 
     papers = queue_data.get("papers", [])
     target: dict[str, Any] | None = None
@@ -470,7 +469,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Subcommand: summary (or status)
     summary_parser = subparsers.add_parser(
-        "summary", aliases=["status"], help="Print concise summary table of queue status"
+        "summary",
+        aliases=["status"],
+        help="Print concise summary table of queue status",
     )
     summary_parser.add_argument(
         "--queue-file",

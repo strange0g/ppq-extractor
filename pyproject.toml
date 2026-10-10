@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ppq-extractor"
+version = "0.1.0"
+description = "Cambridge Past Paper Question (PPQ) extraction pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=10.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.scripts]
+ppq-queue = "tools.queue_manager:main"
+ppq-render = "tools.pdf_to_images:main"
+ppq-crop = "tools.crop_slices:main"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools"]

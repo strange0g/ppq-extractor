@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "ppq-extractor"
 version = "0.1.0"
 description = "Cambridge Past Paper Question (PPQ) extraction pipeline"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pillow>=10.0.0",

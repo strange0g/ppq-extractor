@@ -44,8 +44,12 @@ _Avoid_: Subpart snippet, partial crop
 A structured bundle representing a complete question, encapsulating its Question Preamble Image, individual Question Part Images, Composite Question Image, and machine-readable metadata linking parts to the preamble and mark allocations.
 _Avoid_: Question folder, problem bundle
 
+**Standalone Question**:
+A question containing no divided Question Parts (e.g. an unpartitioned question carrying all marks directly). Stored as an isolated Question Package containing `full.png` and `question.json` without separate preamble or part image files.
+_Avoid_: Single problem, unpartitioned problem
+
 **Composite Question Image**:
-A stitched, unified image asset of an entire question (`full.png` under `questions/q{NN}/`) containing all preamble and Question Parts tightly joined with student answer workspace excised.
+A stitched, unified image asset of an entire question (`full.png` under `questions/q{NN}/`). For multipart questions, contains all preamble and Question Parts tightly joined with student answer workspace excised. For Standalone Questions, contains the entire unpartitioned question.
 _Avoid_: Merged image, stitched page
 
 **Full-Width Crop**:

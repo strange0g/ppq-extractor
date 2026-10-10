@@ -14,16 +14,20 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         )
         content = prompt_path.read_text(encoding="utf-8")
 
-        # Must instruct queue polling via queue_manager CLI
-        self.assertIn("queue_manager next --role extractor", content)
-        # Must instruct PDF rendering via pdf_to_images tool
-        self.assertIn("pdf_to_images", content)
+        # Must instruct queue polling via uv run ppq-queue
+        self.assertTrue(
+            "ppq-queue next --role extractor" in content
+            or "queue_manager next --role extractor" in content,
+        )
+        self.assertIn("uv run ppq-queue next --role extractor", content)
+        # Must instruct PDF rendering via uv run ppq-render
+        self.assertIn("uv run ppq-render", content)
         # Must reference vision slicing prompt
         self.assertIn("vision_slicing.md", content)
-        # Must instruct cropping tool via crop_slices
-        self.assertIn("crop_slices", content)
-        # Must specify queue updating command
-        self.assertIn("queue_manager update", content)
+        # Must instruct cropping tool via uv run ppq-crop
+        self.assertIn("uv run ppq-crop", content)
+        # Must specify queue updating command via uv run ppq-queue update
+        self.assertIn("uv run ppq-queue update", content)
         # Must specify --extracted-marks flag
         self.assertIn("--extracted-marks", content)
         # Must specify conventional git commit
@@ -113,8 +117,12 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         )
         content = prompt_path.read_text(encoding="utf-8")
 
-        # Must specify queue polling for verifier role
-        self.assertIn("queue_manager next --role verifier", content)
+        # Must specify queue polling for verifier role via uv run ppq-queue
+        self.assertTrue(
+            "ppq-queue next --role verifier" in content
+            or "queue_manager next --role verifier" in content,
+        )
+        self.assertIn("uv run ppq-queue next --role verifier", content)
         # Scheduled hourly execution
         self.assertTrue(
             "hourly" in content.lower(),
@@ -136,14 +144,19 @@ class TestPromptsAndGuidelines(unittest.TestCase):
             "verifier_agent.md must inspect Question Packages",
         )
         self.assertIn("question.json", content)
-        # Autonomous repair loop
-        self.assertTrue("repair" in content.lower() or "crop_slices" in content)
-        # Updating queue status to verified or needs_rework
+        # Autonomous repair loop via uv run ppq-crop
+        self.assertTrue(
+            "repair" in content.lower()
+            or "crop_slices" in content
+            or "ppq-crop" in content
+        )
+        self.assertIn("uv run ppq-crop", content)
+        # Updating queue status to verified or needs_rework via uv run ppq-queue update
         self.assertIn("verified", content)
         self.assertNotIn('"approved"', content)
         self.assertNotIn("subpart", content.lower())
         self.assertIn("needs_rework", content)
-        self.assertIn("queue_manager update", content)
+        self.assertIn("uv run ppq-queue update", content)
         # Git commit convention
         self.assertIn("feat(verifier):", content)
 
@@ -222,6 +235,22 @@ class TestPromptsAndGuidelines(unittest.TestCase):
                     content,
                     f"Prompt {filename} contains forbidden term '{forbidden}'. Use '{preferred}' instead.",
                 )
+
+    def test_prompts_require_uv_run_workflow(self):
+        """Ensure all prompt templates use canonical 'uv run' commands exclusively."""
+        for filename in [
+            "extractor_agent.md",
+            "verifier_agent.md",
+            "vision_slicing.md",
+        ]:
+            prompt_file = REPO_ROOT / "prompts" / filename
+            content = prompt_file.read_text(encoding="utf-8")
+            # Must not use bare 'python3 -m tools.' in bash command blocks
+            self.assertNotIn(
+                "python3 -m tools.",
+                content,
+                f"Prompt {filename} contains bare 'python3 -m tools.' invocation. Use canonical 'uv run' command instead.",
+            )
 
 
 if __name__ == "__main__":

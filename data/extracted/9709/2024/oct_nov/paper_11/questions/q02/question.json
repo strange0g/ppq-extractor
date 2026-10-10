@@ -14,7 +14,7 @@
       "part_id": "9709_w24_qp_11_q02_p1",
       "label": "",
       "marks": 4,
-      "isolated_asset_path": "part.png",
+      "isolated_asset_path": "full.png",
       "dimensions": {
         "width": 1654,
         "height": 151
@@ -25,11 +25,17 @@
           "ymin": 74,
           "xmin": 0,
           "ymax": 130,
-          "xmax": 1000
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            130,
+            1000
+          ]
         }
       ],
       "topics": [
-        "1.5"
+        "1.7"
       ],
       "context_dependencies": []
     }
@@ -43,7 +49,7 @@
   },
   "taxonomy": {
     "topics": [
-      "1.5"
+      "1.7"
     ],
     "has_diagram": false
   }

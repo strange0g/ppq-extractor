@@ -8,15 +8,21 @@
     "asset_path": "preamble.png",
     "dimensions": {
       "width": 1654,
-      "height": 80
+      "height": 85
     },
     "slices": [
       {
         "page": 16,
         "ymin": 74,
         "xmin": 0,
-        "ymax": 100,
-        "xmax": 1000
+        "ymax": 102,
+        "xmax": 1000,
+        "box_1000": [
+          74,
+          0,
+          102,
+          1000
+        ]
       }
     ]
   },
@@ -28,18 +34,27 @@
       "isolated_asset_path": "part_a.png",
       "dimensions": {
         "width": 1654,
-        "height": 132
+        "height": 116
       },
       "slices": [
         {
           "page": 16,
-          "ymin": 102,
+          "ymin": 107,
           "xmin": 0,
-          "ymax": 150,
-          "xmax": 1000
+          "ymax": 148,
+          "xmax": 1000,
+          "box_1000": [
+            107,
+            0,
+            148,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.1",
+        "1.2"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -51,18 +66,26 @@
       "isolated_asset_path": "part_b.png",
       "dimensions": {
         "width": 1654,
-        "height": 219
+        "height": 184
       },
       "slices": [
         {
           "page": 16,
-          "ymin": 575,
+          "ymin": 585,
           "xmin": 0,
-          "ymax": 660,
-          "xmax": 1000
+          "ymax": 655,
+          "xmax": 1000,
+          "box_1000": [
+            585,
+            0,
+            655,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.2"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -74,18 +97,26 @@
       "isolated_asset_path": "part_c.png",
       "dimensions": {
         "width": 1654,
-        "height": 197
+        "height": 193
       },
       "slices": [
         {
           "page": 17,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 150,
-          "xmax": 1000
+          "ymax": 148,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            148,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.2"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -97,18 +128,26 @@
       "isolated_asset_path": "part_d.png",
       "dimensions": {
         "width": 1654,
-        "height": 184
+        "height": 160
       },
       "slices": [
         {
           "page": 17,
-          "ymin": 500,
+          "ymin": 505,
           "xmin": 0,
-          "ymax": 570,
-          "xmax": 1000
+          "ymax": 565,
+          "xmax": 1000,
+          "box_1000": [
+            505,
+            0,
+            565,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.2"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -118,7 +157,7 @@
     "asset_path": "full.png",
     "dimensions": {
       "width": 1654,
-      "height": 892
+      "height": 818
     }
   },
   "taxonomy": {

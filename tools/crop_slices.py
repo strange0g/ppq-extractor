@@ -545,7 +545,13 @@ def crop_and_stitch(
 
             composite_slices.extend(part_slice_imgs)
 
-            # Isolated Question Part Image: DO NOT prepend preamble
+            # Determine whether this is a standalone question without subparts
+            is_standalone_question = (
+                len(parts) == 1
+                and not preamble_meta["present"]
+                and not (part.get("label") or part.get("part_label"))
+            )
+
             filename, label_val, part_identifier = _format_part_naming(
                 part=part,
                 idx=idx,
@@ -553,9 +559,25 @@ def crop_and_stitch(
                 q_id=q_id,
             )
 
-            part_file = q_pkg_dir / filename
-            part_main_img.save(part_file, format="PNG")
-            generated_crops.append(str(part_file))
+            if is_standalone_question:
+                # Standalone Question: The composite full.png serves as the primary asset; avoid saving duplicate part.png
+                filename = "full.png"
+                part_file = q_pkg_dir / "full.png"
+                # Clean up any stale redundant part.png or preamble.png on disk
+                for stale_name in (
+                    "part.png",
+                    "part_1.png",
+                    "part_whole.png",
+                    "preamble.png",
+                ):
+                    stale_file = q_pkg_dir / stale_name
+                    if stale_file.is_file():
+                        stale_file.unlink()
+            else:
+                # Multipart Question: Save isolated Question Part Image
+                part_file = q_pkg_dir / filename
+                part_main_img.save(part_file, format="PNG")
+                generated_crops.append(str(part_file))
 
             # Update part metadata in manifest
             rel_part_manifest_path = _get_relative_asset_path(

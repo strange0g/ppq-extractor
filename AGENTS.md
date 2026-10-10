@@ -88,7 +88,7 @@ Autonomous runs must make atomic commits with conventional commit message prefix
 
 ### Issue tracker
 
-Issues are tracked as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Issues are tracked as GitHub issues via `gh`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

@@ -321,6 +321,7 @@ def crop_and_stitch(
     spacing: int = 20,
     trim_margins: bool = True,
     emit_question_json: bool = False,
+    skip_question_json: bool = False,
     db_path: str | Path | sqlite3.Connection | None | object = _DEFAULT_DB_SENTINEL,
 ) -> Dict[str, Any]:
     """Process question slices from manifest.json and write cropped Question Packages.
@@ -343,6 +344,7 @@ def crop_and_stitch(
         spacing: White separator divider between stitched parts (default: 20).
         trim_margins: Automatically trim outer margin warning text (default: True).
         emit_question_json: Emit legacy atomic question.json descriptor per question package (default: False).
+        skip_question_json: Backward-compatible alias to suppress question.json generation (default: False).
         db_path: SQLite database path or connection to sync into. Defaults to .pipeline/queue.db if present.
                  Pass None or empty string to skip database synchronization.
 
@@ -442,7 +444,7 @@ def crop_and_stitch(
 
             composite_slices.extend(part_slice_imgs)
 
-            # Determine whether this is a standalone question without subparts
+            # Determine whether this is a standalone question without Question Parts
             is_standalone_question = (
                 len(parts) == 1
                 and not preamble_meta["present"]
@@ -559,7 +561,8 @@ def crop_and_stitch(
         )
 
         # Question Package descriptor: deprecated by default, emitted only when explicitly requested
-        if emit_question_json:
+        should_emit_json = emit_question_json and not skip_question_json
+        if should_emit_json:
             q_json_content = {
                 "id": q_id,
                 "paper_id": paper_id,
@@ -685,6 +688,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Emit legacy atomic question.json descriptor per question package",
     )
     parser.add_argument(
+        "--skip-question-json",
+        action="store_true",
+        default=False,
+        help="Backward-compatible alias; suppresses legacy question.json generation (default)",
+    )
+    parser.add_argument(
         "--db-path",
         default=_DEFAULT_DB_SENTINEL,
         help="Target SQLite database path for ingestion (default: .pipeline/queue.db if present)",
@@ -708,6 +717,7 @@ def main(argv: list[str] | None = None) -> None:
             spacing=args.spacing,
             trim_margins=not args.no_trim_margins,
             emit_question_json=args.emit_question_json,
+            skip_question_json=args.skip_question_json,
             db_path=target_db_arg,
         )
         print(json.dumps(summary, indent=2))

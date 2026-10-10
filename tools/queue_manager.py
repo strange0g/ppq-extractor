@@ -750,70 +750,9 @@ def main(argv: list[str] | None = None) -> int:
         "query",
         help="Query questions or parts from the SQLite question bank by topic/metadata",
     )
-    query_parser.add_argument(
-        "--db-path",
-        default=None,
-        help="Target SQLite database path (default: .pipeline/queue.db)",
-    )
-    query_parser.add_argument(
-        "--topic",
-        dest="topic_code",
-        help="Syllabus Topic Code (e.g. '1.1', '1.8')",
-    )
-    query_parser.add_argument(
-        "--syllabus",
-        help="Syllabus identifier (e.g. '9709')",
-    )
-    query_parser.add_argument(
-        "--component",
-        type=int,
-        help="Component paper number (e.g. 1, 3)",
-    )
-    query_parser.add_argument(
-        "--variant",
-        type=int,
-        help="Paper variant number",
-    )
-    query_parser.add_argument(
-        "--year",
-        type=int,
-        help="Exam year (e.g. 2024)",
-    )
-    query_parser.add_argument(
-        "--year-min",
-        type=int,
-        help="Minimum exam year filter",
-    )
-    query_parser.add_argument(
-        "--year-max",
-        type=int,
-        help="Maximum exam year filter",
-    )
-    query_parser.add_argument(
-        "--session",
-        help="Exam session code ('m', 's', 'w')",
-    )
-    query_parser.add_argument(
-        "--marks-min",
-        type=int,
-        help="Minimum mark threshold",
-    )
-    query_parser.add_argument(
-        "--marks-max",
-        type=int,
-        help="Maximum mark threshold",
-    )
-    query_parser.add_argument(
-        "--parts",
-        action="store_true",
-        help="Query at the Question Part level rather than whole questions",
-    )
-    query_parser.add_argument(
-        "--format",
-        choices=["json", "table", "plain"],
-        default="json",
-        help="Output format (default: json)",
-    )
+    from tools.db.repository import add_query_arguments
+
+    add_query_arguments(query_parser, default_db_path=None)
 
     args = parser.parse_args(argv)
     backend, target_path = _resolve_backend(args)
@@ -1027,6 +966,8 @@ def main(argv: list[str] | None = None) -> int:
                     session=getattr(args, "session", None),
                     min_marks=getattr(args, "marks_min", None),
                     max_marks=getattr(args, "marks_max", None),
+                    paper_id=getattr(args, "paper_id", None),
+                    limit=getattr(args, "limit", None),
                 )
                 is_parts = True
             else:
@@ -1041,12 +982,19 @@ def main(argv: list[str] | None = None) -> int:
                     session=getattr(args, "session", None),
                     min_marks=getattr(args, "marks_min", None),
                     max_marks=getattr(args, "marks_max", None),
+                    paper_id=getattr(args, "paper_id", None),
+                    limit=getattr(args, "limit", None),
                 )
                 is_parts = False
 
             output_format = getattr(args, "format", "json")
             if output_format == "json":
-                print(json.dumps(results, indent=2))
+                print(
+                    json.dumps(
+                        [r.to_dict() if hasattr(r, "to_dict") else r for r in results],
+                        indent=2,
+                    )
+                )
             else:
                 print(_format_table(results, is_parts=is_parts))
         return 0

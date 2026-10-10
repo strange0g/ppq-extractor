@@ -15,7 +15,20 @@ from tools.db.migrations import (
     seed_syllabus_topics,
     set_schema_version,
 )
-from tools.db.repository import QuestionRepository
+from tools.db.models import (
+    PaperModel,
+    QuestionModel,
+    QuestionPartModel,
+    QuestionQueryFilter,
+    SliceModel,
+    TopicModel,
+)
+from tools.db.repository import (
+    QuestionRepository,
+    add_query_arguments,
+    build_pagination_clause,
+    build_query_where_clause,
+)
 from tools.db.sync import sync_manifest_to_db
 
 __all__ = [
@@ -30,4 +43,13 @@ __all__ = [
     "QuestionRepository",
     "Migration",
     "MIGRATIONS",
+    "PaperModel",
+    "QuestionModel",
+    "QuestionPartModel",
+    "TopicModel",
+    "SliceModel",
+    "QuestionQueryFilter",
+    "add_query_arguments",
+    "build_pagination_clause",
+    "build_query_where_clause",
 ]

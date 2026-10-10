@@ -18,8 +18,210 @@ from pathlib import Path
 from typing import Any
 
 from tools.db.connection import get_connection
+from tools.db.models import (
+    PaperModel,
+    QuestionModel,
+    QuestionPartModel,
+    TopicModel,
+)
 
 DEFAULT_DB_PATH = Path(".pipeline/queue.db")
+
+
+def build_pagination_clause(
+    limit: int | None = None,
+    offset: int | None = None,
+) -> tuple[str, list[Any]]:
+    """Construct SQL LIMIT and OFFSET clause handling SQLite offset-without-limit requirement.
+
+    In SQLite, specifying OFFSET requires a LIMIT clause; when offset is provided without
+    limit, SQLite requires LIMIT -1 OFFSET ?.
+    """
+    if limit is not None and offset is not None:
+        return "LIMIT ? OFFSET ?", [int(limit), int(offset)]
+    if limit is not None:
+        return "LIMIT ?", [int(limit)]
+    if offset is not None:
+        return "LIMIT -1 OFFSET ?", [int(offset)]
+    return "", []
+
+
+def build_query_where_clause(
+    *,
+    topic_code: str | None = None,
+    syllabus: str | None = None,
+    component: int | None = None,
+    variant: int | None = None,
+    year: int | None = None,
+    year_min: int | None = None,
+    year_max: int | None = None,
+    session: str | None = None,
+    min_marks: int | None = None,
+    max_marks: int | None = None,
+    paper_id: str | None = None,
+    question_id: str | None = None,
+    is_parts: bool = False,
+) -> tuple[str, list[Any]]:
+    """Build shared parameterized SQL WHERE clause and bindings for questions and Question Parts."""
+    where_clauses: list[str] = []
+    params: list[Any] = []
+
+    if topic_code:
+        if is_parts:
+            where_clauses.append(
+                """(
+                    EXISTS (
+                        SELECT 1 FROM question_topics qt
+                        WHERE qt.part_id = qp.id AND qt.topic_code = ?
+                    ) OR EXISTS (
+                        SELECT 1 FROM question_topics qt
+                        WHERE qt.question_id = q.id AND qt.part_id IS NULL AND qt.topic_code = ?
+                    )
+                )"""
+            )
+            params.extend([str(topic_code), str(topic_code)])
+        else:
+            where_clauses.append(
+                """EXISTS (
+                    SELECT 1 FROM question_topics qt
+                    WHERE qt.question_id = q.id AND qt.topic_code = ?
+                )"""
+            )
+            params.append(str(topic_code))
+
+    if syllabus:
+        where_clauses.append("p.syllabus = ?")
+        params.append(str(syllabus))
+
+    if component is not None:
+        where_clauses.append("p.component = ?")
+        params.append(int(component))
+
+    if variant is not None:
+        where_clauses.append("p.variant = ?")
+        params.append(int(variant))
+
+    if year is not None:
+        where_clauses.append("p.year = ?")
+        params.append(int(year))
+
+    if year_min is not None:
+        where_clauses.append("p.year >= ?")
+        params.append(int(year_min))
+
+    if year_max is not None:
+        where_clauses.append("p.year <= ?")
+        params.append(int(year_max))
+
+    if session:
+        where_clauses.append("p.session = ?")
+        params.append(str(session).lower())
+
+    marks_col = "qp.marks" if is_parts else "q.total_marks"
+    if min_marks is not None:
+        where_clauses.append(f"{marks_col} >= ?")
+        params.append(int(min_marks))
+
+    if max_marks is not None:
+        where_clauses.append(f"{marks_col} <= ?")
+        params.append(int(max_marks))
+
+    if paper_id:
+        where_clauses.append("q.paper_id = ?")
+        params.append(str(paper_id))
+
+    if question_id:
+        if is_parts:
+            where_clauses.append("qp.question_id = ?")
+        else:
+            where_clauses.append("q.id = ?")
+        params.append(str(question_id))
+
+    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    return where_sql, params
+
+
+def add_query_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    default_db_path: Any = DEFAULT_DB_PATH,
+    include_db_path: bool = True,
+) -> None:
+    """Register common CLI query filter arguments on an ArgumentParser."""
+    if include_db_path:
+        parser.add_argument(
+            "--db-path",
+            default=default_db_path,
+            help=f"Target SQLite database path (default: {default_db_path or '.pipeline/queue.db'})",
+        )
+    parser.add_argument(
+        "--topic",
+        dest="topic_code",
+        help="Syllabus Topic Code (e.g. '1.1', '1.8')",
+    )
+    parser.add_argument(
+        "--syllabus",
+        help="Syllabus identifier (e.g. '9709')",
+    )
+    parser.add_argument(
+        "--component",
+        type=int,
+        help="Component paper number (e.g. 1, 3)",
+    )
+    parser.add_argument(
+        "--variant",
+        type=int,
+        help="Paper variant number",
+    )
+    parser.add_argument(
+        "--year",
+        type=int,
+        help="Exam year (e.g. 2024)",
+    )
+    parser.add_argument(
+        "--year-min",
+        type=int,
+        help="Minimum exam year filter",
+    )
+    parser.add_argument(
+        "--year-max",
+        type=int,
+        help="Maximum exam year filter",
+    )
+    parser.add_argument(
+        "--session",
+        help="Exam session code ('m', 's', 'w')",
+    )
+    parser.add_argument(
+        "--marks-min",
+        type=int,
+        help="Minimum mark threshold",
+    )
+    parser.add_argument(
+        "--marks-max",
+        type=int,
+        help="Maximum mark threshold",
+    )
+    parser.add_argument(
+        "--paper-id",
+        help="Filter by specific paper ID",
+    )
+    parser.add_argument(
+        "--parts",
+        action="store_true",
+        help="Query at the Question Part level rather than whole questions",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["json", "table", "plain"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Limit output rows",
+    )
 
 
 class QuestionRepository:
@@ -73,7 +275,8 @@ class QuestionRepository:
         paper_id: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[dict[str, Any]]:
+        as_dict: bool = False,
+    ) -> list[QuestionModel] | list[dict[str, Any]]:
         """Query questions matching filter criteria.
 
         Args:
@@ -90,65 +293,29 @@ class QuestionRepository:
             paper_id: Exact paper identifier
             limit: Maximum records to return
             offset: Offset for pagination
+            as_dict: If True, return raw dictionaries instead of QuestionModel instances
 
         Returns:
-            List of question dictionaries containing parts, topics, and paper metadata.
+            List of QuestionModel instances (or dicts) containing parts, topics, and paper metadata.
         """
-        where_clauses: list[str] = []
-        params: list[Any] = []
-
-        if topic_code:
-            where_clauses.append(
-                """EXISTS (
-                    SELECT 1 FROM question_topics qt
-                    WHERE qt.question_id = q.id AND qt.topic_code = ?
-                )"""
-            )
-            params.append(str(topic_code))
-
-        if syllabus:
-            where_clauses.append("p.syllabus = ?")
-            params.append(str(syllabus))
-
-        if component is not None:
-            where_clauses.append("p.component = ?")
-            params.append(int(component))
-
-        if variant is not None:
-            where_clauses.append("p.variant = ?")
-            params.append(int(variant))
-
-        if year is not None:
-            where_clauses.append("p.year = ?")
-            params.append(int(year))
-
-        if year_min is not None:
-            where_clauses.append("p.year >= ?")
-            params.append(int(year_min))
-
-        if year_max is not None:
-            where_clauses.append("p.year <= ?")
-            params.append(int(year_max))
-
-        if session:
-            where_clauses.append("p.session = ?")
-            params.append(str(session).lower())
-
-        if min_marks is not None:
-            where_clauses.append("q.total_marks >= ?")
-            params.append(int(min_marks))
-
-        if max_marks is not None:
-            where_clauses.append("q.total_marks <= ?")
-            params.append(int(max_marks))
-
-        if paper_id:
-            where_clauses.append("q.paper_id = ?")
-            params.append(str(paper_id))
-
-        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-        limit_sql = f"LIMIT {int(limit)}" if limit is not None else ""
-        offset_sql = f"OFFSET {int(offset)}" if offset is not None else ""
+        where_sql, params = build_query_where_clause(
+            topic_code=topic_code,
+            syllabus=syllabus,
+            component=component,
+            variant=variant,
+            year=year,
+            year_min=year_min,
+            year_max=year_max,
+            session=session,
+            min_marks=min_marks,
+            max_marks=max_marks,
+            paper_id=paper_id,
+            is_parts=False,
+        )
+        pagination_sql, page_params = build_pagination_clause(
+            limit=limit, offset=offset
+        )
+        params.extend(page_params)
 
         sql = f"""
             SELECT
@@ -170,7 +337,7 @@ class QuestionRepository:
             JOIN papers p ON q.paper_id = p.id
             {where_sql}
             ORDER BY p.year DESC, p.session DESC, p.component ASC, p.variant ASC, q.question_number ASC
-            {limit_sql} {offset_sql};
+            {pagination_sql};
         """
 
         cur = self._conn.execute(sql, params)
@@ -232,35 +399,39 @@ class QuestionRepository:
             if pid:
                 part_topics_by_pid.setdefault(pid, []).append(code)
 
-        results: list[dict[str, Any]] = []
+        results: list[QuestionModel] = []
         for r in rows:
             qid = r["id"]
-            parts = parts_by_qid.get(qid, [])
-            for p in parts:
+            parts_data = parts_by_qid.get(qid, [])
+            part_models: list[QuestionPartModel] = []
+            for p in parts_data:
                 p["topics"] = sorted(set(part_topics_by_pid.get(p["id"], [])))
+                part_models.append(QuestionPartModel(**p))
 
             topics = sorted(q_topics_by_qid.get(qid, set()))
             results.append(
-                {
-                    "id": qid,
-                    "paper_id": r["paper_id"],
-                    "question_number": r["question_number"],
-                    "total_marks": r["total_marks"],
-                    "has_preamble": bool(r["has_preamble"]),
-                    "composite_image_path": r["composite_image_path"],
-                    "preamble_image_path": r["preamble_image_path"],
-                    "syllabus": r["syllabus"],
-                    "year": r["year"],
-                    "session": r["session"],
-                    "session_slug": r["session_slug"],
-                    "component": r["component"],
-                    "variant": r["variant"],
-                    "output_dir": r["output_dir"],
-                    "topics": topics,
-                    "parts": parts,
-                }
+                QuestionModel(
+                    id=qid,
+                    paper_id=r["paper_id"],
+                    question_number=r["question_number"],
+                    total_marks=r["total_marks"],
+                    has_preamble=bool(r["has_preamble"]),
+                    composite_image_path=r["composite_image_path"],
+                    preamble_image_path=r["preamble_image_path"],
+                    syllabus=r["syllabus"],
+                    year=r["year"],
+                    session=r["session"],
+                    session_slug=r["session_slug"],
+                    component=r["component"],
+                    variant=r["variant"],
+                    output_dir=r["output_dir"],
+                    topics=topics,
+                    parts=part_models,
+                )
             )
 
+        if as_dict:
+            return [q.to_dict() for q in results]
         return results
 
     def query_parts(
@@ -280,7 +451,8 @@ class QuestionRepository:
         question_id: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[dict[str, Any]]:
+        as_dict: bool = False,
+    ) -> list[QuestionPartModel] | list[dict[str, Any]]:
         """Query individual Question Parts matching filter criteria.
 
         Args:
@@ -298,74 +470,30 @@ class QuestionRepository:
             question_id: Exact question identifier
             limit: Maximum records to return
             offset: Offset for pagination
+            as_dict: If True, return raw dictionaries instead of QuestionPartModel instances
 
         Returns:
-            List of Question Part dictionaries with asset paths and paper context.
+            List of QuestionPartModel instances (or dicts) with asset paths and paper context.
         """
-        where_clauses: list[str] = []
-        params: list[Any] = []
-
-        if topic_code:
-            where_clauses.append(
-                """(
-                    EXISTS (
-                        SELECT 1 FROM question_topics qt
-                        WHERE qt.part_id = qp.id AND qt.topic_code = ?
-                    ) OR EXISTS (
-                        SELECT 1 FROM question_topics qt
-                        WHERE qt.question_id = q.id AND qt.part_id IS NULL AND qt.topic_code = ?
-                    )
-                )"""
-            )
-            params.extend([str(topic_code), str(topic_code)])
-
-        if syllabus:
-            where_clauses.append("p.syllabus = ?")
-            params.append(str(syllabus))
-
-        if component is not None:
-            where_clauses.append("p.component = ?")
-            params.append(int(component))
-
-        if variant is not None:
-            where_clauses.append("p.variant = ?")
-            params.append(int(variant))
-
-        if year is not None:
-            where_clauses.append("p.year = ?")
-            params.append(int(year))
-
-        if year_min is not None:
-            where_clauses.append("p.year >= ?")
-            params.append(int(year_min))
-
-        if year_max is not None:
-            where_clauses.append("p.year <= ?")
-            params.append(int(year_max))
-
-        if session:
-            where_clauses.append("p.session = ?")
-            params.append(str(session).lower())
-
-        if min_marks is not None:
-            where_clauses.append("qp.marks >= ?")
-            params.append(int(min_marks))
-
-        if max_marks is not None:
-            where_clauses.append("qp.marks <= ?")
-            params.append(int(max_marks))
-
-        if paper_id:
-            where_clauses.append("q.paper_id = ?")
-            params.append(str(paper_id))
-
-        if question_id:
-            where_clauses.append("qp.question_id = ?")
-            params.append(str(question_id))
-
-        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-        limit_sql = f"LIMIT {int(limit)}" if limit is not None else ""
-        offset_sql = f"OFFSET {int(offset)}" if offset is not None else ""
+        where_sql, params = build_query_where_clause(
+            topic_code=topic_code,
+            syllabus=syllabus,
+            component=component,
+            variant=variant,
+            year=year,
+            year_min=year_min,
+            year_max=year_max,
+            session=session,
+            min_marks=min_marks,
+            max_marks=max_marks,
+            paper_id=paper_id,
+            question_id=question_id,
+            is_parts=True,
+        )
+        pagination_sql, page_params = build_pagination_clause(
+            limit=limit, offset=offset
+        )
+        params.extend(page_params)
 
         sql = f"""
             SELECT
@@ -393,7 +521,7 @@ class QuestionRepository:
             JOIN papers p ON q.paper_id = p.id
             {where_sql}
             ORDER BY p.year DESC, p.session DESC, p.component ASC, p.variant ASC, q.question_number ASC, qp.label ASC
-            {limit_sql} {offset_sql};
+            {pagination_sql};
         """
 
         cur = self._conn.execute(sql, params)
@@ -423,42 +551,45 @@ class QuestionRepository:
             else:
                 q_topics.setdefault(tr["question_id"], set()).add(code)
 
-        results: list[dict[str, Any]] = []
+        results: list[QuestionPartModel] = []
         for r in rows:
             pid = r["id"]
             qid = r["question_id"]
             topics = sorted(part_topics.get(pid, set()) or q_topics.get(qid, set()))
-            results.append(
-                {
-                    "id": pid,
-                    "question_id": qid,
-                    "paper_id": r["paper_id"],
-                    "question_number": r["question_number"],
-                    "label": r["label"],
-                    "part_label": r["part_label"],
-                    "marks": r["marks"],
-                    "part_image_path": r["part_image_path"],
-                    "has_preamble_context": bool(r["has_preamble_context"]),
-                    "preamble_image_path": r["preamble_image_path"],
-                    "composite_image_path": r["composite_image_path"],
-                    "syllabus": r["syllabus"],
-                    "year": r["year"],
-                    "session": r["session"],
-                    "session_slug": r["session_slug"],
-                    "component": r["component"],
-                    "variant": r["variant"],
-                    "output_dir": r["output_dir"],
-                    "topics": topics,
-                }
+            part_model = QuestionPartModel(
+                id=pid,
+                question_id=qid,
+                paper_id=r["paper_id"],
+                question_number=r["question_number"],
+                label=r["label"],
+                part_label=r["part_label"],
+                marks=r["marks"],
+                part_image_path=r["part_image_path"],
+                has_preamble_context=bool(r["has_preamble_context"]),
+                preamble_image_path=r["preamble_image_path"],
+                composite_image_path=r["composite_image_path"],
+                syllabus=r["syllabus"],
+                year=r["year"],
+                session=r["session"],
+                session_slug=r["session_slug"],
+                component=r["component"],
+                variant=r["variant"],
+                output_dir=r["output_dir"],
+                topics=topics,
             )
+            results.append(part_model)
 
+        if as_dict:
+            return [p.to_dict() for p in results]
         return results
 
     def query_by_topic(self, topic_code: str, **kwargs: Any) -> list[dict[str, Any]]:
         """Convenience method to query questions by Syllabus Topic Code."""
         return self.query_questions(topic_code=topic_code, **kwargs)
 
-    def get_question(self, question_id: str) -> dict[str, Any] | None:
+    def get_question(
+        self, question_id: str, *, as_dict: bool = False
+    ) -> QuestionModel | dict[str, Any] | None:
         """Retrieve a single question by id, including its parts, topics, and slices."""
         cur = self._conn.execute(
             """
@@ -505,16 +636,16 @@ class QuestionRepository:
             (question_id,),
         )
         parts = [
-            {
-                "id": pr["id"],
-                "question_id": pr["question_id"],
-                "label": pr["label"],
-                "part_label": pr["part_label"],
-                "marks": pr["marks"],
-                "part_image_path": pr["part_image_path"],
-                "has_preamble_context": bool(pr["has_preamble_context"]),
-                "topics": [],
-            }
+            QuestionPartModel(
+                id=pr["id"],
+                question_id=pr["question_id"],
+                label=pr["label"],
+                part_label=pr["part_label"],
+                marks=pr["marks"],
+                part_image_path=pr["part_image_path"],
+                has_preamble_context=bool(pr["has_preamble_context"]),
+                topics=[],
+            )
             for pr in parts_cur.fetchall()
         ]
 
@@ -536,28 +667,31 @@ class QuestionRepository:
                 part_topics_map.setdefault(tr["part_id"], []).append(tr["topic_code"])
 
         for p in parts:
-            p["topics"] = sorted(set(part_topics_map.get(p["id"], [])))
+            p.topics = sorted(set(part_topics_map.get(p.id, [])))
 
-        return {
-            "id": row["id"],
-            "paper_id": row["paper_id"],
-            "question_number": row["question_number"],
-            "total_marks": row["total_marks"],
-            "has_preamble": bool(row["has_preamble"]),
-            "composite_image_path": row["composite_image_path"],
-            "preamble_image_path": row["preamble_image_path"],
-            "syllabus": row["syllabus"],
-            "year": row["year"],
-            "session": row["session"],
-            "session_slug": row["session_slug"],
-            "component": row["component"],
-            "variant": row["variant"],
-            "output_dir": row["output_dir"],
-            "topics": sorted(all_topics),
-            "parts": parts,
-        }
+        q_model = QuestionModel(
+            id=row["id"],
+            paper_id=row["paper_id"],
+            question_number=row["question_number"],
+            total_marks=row["total_marks"],
+            has_preamble=bool(row["has_preamble"]),
+            composite_image_path=row["composite_image_path"],
+            preamble_image_path=row["preamble_image_path"],
+            syllabus=row["syllabus"],
+            year=row["year"],
+            session=row["session"],
+            session_slug=row["session_slug"],
+            component=row["component"],
+            variant=row["variant"],
+            output_dir=row["output_dir"],
+            topics=sorted(all_topics),
+            parts=parts,
+        )
+        return q_model.to_dict() if as_dict else q_model
 
-    def get_paper(self, paper_id: str) -> dict[str, Any] | None:
+    def get_paper(
+        self, paper_id: str, *, as_dict: bool = False
+    ) -> PaperModel | dict[str, Any] | None:
         """Retrieve a paper record with its question count and total marks."""
         cur = self._conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
         row = cur.fetchone()
@@ -572,9 +706,12 @@ class QuestionRepository:
         q_row = q_cur.fetchone()
         data["questions_count"] = q_row["count"] if q_row else 0
         data["calculated_marks"] = q_row["marks"] or 0 if q_row else 0
-        return data
+        paper_model = PaperModel(**data)
+        return paper_model.to_dict() if as_dict else paper_model
 
-    def list_topics(self, syllabus: str | None = None) -> list[dict[str, Any]]:
+    def list_topics(
+        self, syllabus: str | None = None, *, as_dict: bool = False
+    ) -> list[TopicModel] | list[dict[str, Any]]:
         """List topics registered in database along with counts of tagged questions and parts."""
         params: list[Any] = []
         where = ""
@@ -596,10 +733,11 @@ class QuestionRepository:
             ORDER BY t.topic_code ASC;
         """
         cur = self._conn.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+        topics = [TopicModel(**dict(r)) for r in cur.fetchall()]
+        return [t.to_dict() for t in topics] if as_dict else topics
 
 
-def _format_table(results: list[dict[str, Any]], is_parts: bool = False) -> str:
+def _format_table(results: list[Any], is_parts: bool = False) -> str:
     """Format query results as a compact readable plain-text table."""
     if not results:
         return "No matching records found."
@@ -639,80 +777,7 @@ def main(argv: list[str] | None = None) -> None:
     subparsers = parser.add_subparsers(dest="subcommand", help="Subcommand to run")
 
     query_parser = subparsers.add_parser("query", help="Query questions or parts")
-    query_parser.add_argument(
-        "--db-path",
-        default=DEFAULT_DB_PATH,
-        type=Path,
-        help=f"Target SQLite database path (default: {DEFAULT_DB_PATH})",
-    )
-    query_parser.add_argument(
-        "--topic",
-        dest="topic_code",
-        help="Syllabus Topic Code (e.g. '1.1', '1.8')",
-    )
-    query_parser.add_argument(
-        "--syllabus",
-        help="Syllabus identifier (e.g. '9709')",
-    )
-    query_parser.add_argument(
-        "--component",
-        type=int,
-        help="Component paper number (e.g. 1, 3)",
-    )
-    query_parser.add_argument(
-        "--variant",
-        type=int,
-        help="Paper variant number (e.g. 1, 2)",
-    )
-    query_parser.add_argument(
-        "--year",
-        type=int,
-        help="Exam year (e.g. 2024)",
-    )
-    query_parser.add_argument(
-        "--year-min",
-        type=int,
-        help="Minimum exam year filter",
-    )
-    query_parser.add_argument(
-        "--year-max",
-        type=int,
-        help="Maximum exam year filter",
-    )
-    query_parser.add_argument(
-        "--session",
-        help="Exam session code ('m', 's', 'w')",
-    )
-    query_parser.add_argument(
-        "--marks-min",
-        type=int,
-        help="Minimum mark threshold",
-    )
-    query_parser.add_argument(
-        "--marks-max",
-        type=int,
-        help="Maximum mark threshold",
-    )
-    query_parser.add_argument(
-        "--paper-id",
-        help="Filter by specific paper ID",
-    )
-    query_parser.add_argument(
-        "--parts",
-        action="store_true",
-        help="Query at the Question Part level rather than whole questions",
-    )
-    query_parser.add_argument(
-        "--format",
-        choices=["json", "table", "plain"],
-        default="json",
-        help="Output format (default: json)",
-    )
-    query_parser.add_argument(
-        "--limit",
-        type=int,
-        help="Limit output rows",
-    )
+    add_query_arguments(query_parser, default_db_path=DEFAULT_DB_PATH)
 
     # Topics list subcommand
     topics_parser = subparsers.add_parser(
@@ -780,7 +845,12 @@ def main(argv: list[str] | None = None) -> None:
 
             output_format = getattr(args, "format", "json")
             if output_format == "json":
-                print(json.dumps(results, indent=2))
+                print(
+                    json.dumps(
+                        [r.to_dict() if hasattr(r, "to_dict") else r for r in results],
+                        indent=2,
+                    )
+                )
             else:
                 print(_format_table(results, is_parts=is_parts))
         finally:
@@ -796,7 +866,12 @@ def main(argv: list[str] | None = None) -> None:
         try:
             topics = repo.list_topics(syllabus=args.syllabus)
             if args.format == "json":
-                print(json.dumps(topics, indent=2))
+                print(
+                    json.dumps(
+                        [t.to_dict() if hasattr(t, "to_dict") else t for t in topics],
+                        indent=2,
+                    )
+                )
             else:
                 print(f"{'Topic':<8} {'Title':<45} {'Questions':<10} {'Parts'}")
                 print("-" * 75)

@@ -29,6 +29,13 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - Agents run in scheduled hourly autonomous containers without spawning unmanaged inner LLM API loops.
 6. **Workflow & Prompt Synchronization**:
    - Any changes to execution tools, scripts, CLI flags, or workflows (such as canonical `uv run` commands) must be kept strictly synchronized across [`AGENTS.md`](AGENTS.md), [`prompts/extractor_agent.md`](prompts/extractor_agent.md), [`prompts/verifier_agent.md`](prompts/verifier_agent.md), and [`prompts/vision_slicing.md`](prompts/vision_slicing.md). Prompt files must never use legacy bare interpreters or unsynchronized command flags.
+7. **Strict Wayfinder Invariant (Planning, Not Doing)**:
+   - When operating in or managing a Wayfinder session (any session referencing a `wayfinder:map` or working a `wayfinder:*` ticket), agents must strictly produce decisions, not deliverables.
+   - Writing production implementation code, editing application tools/modules, or modifying production database tables inside a Wayfinder session is strictly forbidden.
+   - Every ticket resolves to an architectural or domain decision recorded in an issue comment, never code merged into `main`.
+   - `wayfinder:task` tickets are strictly for prerequisite discovery/unblocking legwork, never implementation work.
+   - An agent must never declare a map complete or suggest transitioning to downstream phases (`/spec`, `/tickets`, `/implement`) while any child ticket on the frontier remains open.
+   - When all tickets are resolved and fog is cleared, hand off to the engineering flow: `/to-spec` -> `/to-tickets` -> `/implement`.
 
 ---
 

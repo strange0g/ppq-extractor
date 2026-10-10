@@ -205,6 +205,13 @@ class TestPromptsAndGuidelines(unittest.TestCase):
         self.assertIn("queue_manager", content)
         self.assertIn("queue_manager show --id", content)
 
+        # Documentation synchronization rule
+        self.assertTrue(
+            "continuous documentation synchronization" in content.lower()
+            or "documentation synchronization" in content.lower(),
+            "AGENTS.md must mandate continuous documentation synchronization",
+        )
+
         # Conventional commits
         self.assertIn("feat(extractor):", content)
         self.assertIn("feat(verifier):", content)

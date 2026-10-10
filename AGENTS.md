@@ -36,6 +36,14 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - `wayfinder:task` tickets are strictly for prerequisite discovery/unblocking legwork, never implementation work.
    - An agent must never declare a map complete or suggest transitioning to downstream phases (`/spec`, `/tickets`, `/implement`) while any child ticket on the frontier remains open.
    - When all tickets are resolved and fog is cleared, hand off to the engineering flow: `/to-spec` -> `/to-tickets` -> `/implement`.
+8. **Continuous Documentation Synchronization**:
+   - Whenever code, database schemas, CLI commands or flags, domain terminology, or architectural flows are modified or introduced, all relevant documentation files must be updated in lockstep within the same commit/PR.
+   - Specifically ensure synchronization across:
+     - [`README.md`](README.md): system overview, directory layout, quickstart commands, and CLI references.
+     - [`docs/architecture.md`](docs/architecture.md) & [`docs/development.md`](docs/development.md): dataflow diagrams, test suite breakdowns, and usage flags.
+     - [`docs/adr/`](docs/adr/): document non-trivial architectural decisions with a new ADR.
+     - [`prompts/`](prompts/): extractor, verifier, and vision slicing system prompts.
+   - Code changes that alter observable behavior, commands, or data models must never be finalized without updating their corresponding documentation.
 
 ---
 

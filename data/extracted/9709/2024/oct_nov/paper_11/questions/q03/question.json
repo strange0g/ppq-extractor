@@ -17,19 +17,19 @@
       "isolated_asset_path": "part.png",
       "dimensions": {
         "width": 1654,
-        "height": 583
+        "height": 665
       },
       "slices": [
         {
           "page": 4,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 315,
+          "ymax": 350,
           "xmax": 1000,
           "box_1000": [
             74,
             0,
-            315,
+            350,
             1000
           ]
         }
@@ -44,7 +44,7 @@
     "asset_path": "full.png",
     "dimensions": {
       "width": 1654,
-      "height": 583
+      "height": 665
     }
   },
   "taxonomy": {

@@ -5,7 +5,7 @@
   "session": "w",
   "paper": 11,
   "source_pdf": "9709/2024/2024 Nov/9709_w24_qp_11.pdf",
-  "status": "extracted",
+  "status": "verified",
   "mode": "write_in",
   "total_marks": 75,
   "expected_marks": 75,
@@ -29,9 +29,15 @@
     17
   ],
   "verification": {
+    "status": "verified",
+    "verified_at": "2026-10-10T12:39:07.126335+00:00",
     "expected_marks": 75,
     "extracted_marks": 75,
-    "balance_check": true
+    "mark_sum_match": true,
+    "clipping_free": true,
+    "workspace_excised": true,
+    "question_numbers_intact": true,
+    "notes": "Repaired Question 3 ymax coordinate (extended from 315 to 350) to fully capture prompt and mark bracket [5]. All 11 questions and parts verified unclipped with intact question numbers and excised answer workspaces."
   },
   "questions": [
     {
@@ -116,29 +122,36 @@
       "has_diagram": true,
       "parts": [
         {
+          "part_id": "9709_w24_qp_11_q03_p1",
           "label": "",
           "marks": 5,
-          "topics": [
-            "1.4"
-          ],
+          "isolated_asset_path": "part.png",
+          "dimensions": {
+            "width": 1654,
+            "height": 583
+          },
           "slices": [
             {
               "page": 4,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 315,
+              "ymax": 350,
               "xmax": 1000,
               "box_1000": [
                 74,
                 0,
-                315,
+                350,
                 1000
               ]
             }
           ],
+          "topics": [
+            "1.4"
+          ],
+          "context_dependencies": [],
           "asset_path": "questions/q03/part.png",
           "width": 1654,
-          "height": 583
+          "height": 665
         }
       ],
       "total_question_marks": 5,
@@ -147,7 +160,7 @@
       ],
       "composite_asset_path": "questions/q03/full.png",
       "composite_width": 1654,
-      "composite_height": 583
+      "composite_height": 665
     },
     {
       "number": 4,

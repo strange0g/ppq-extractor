@@ -18,8 +18,11 @@ flowchart TD
     Extractor --> Manifest["manifest.json"]
     Manifest --> Crop["Cropping Engine (ppq-crop)"]
     Crop --> Packages["Question Packages (questions/q{NN}/)"]
+    Crop --> Sync["Manifest DB Ingestion (sync_manifest_to_db)"]
+    Sync --> DB[("Unified SQLite DB (.pipeline/queue.db)")]
+    DB --> Repo["Topic Query Repository (tools.db.repository)"]
     Packages --> Verifier["Verifier Agent (Mark-Sum & Visual Audit)"]
-    Verifier --> Queue["Processing Queue (.pipeline/queue.json)"]
+    Verifier --> Queue["Processing Queue Ledger"]
 ```
 
 ---
@@ -29,11 +32,11 @@ flowchart TD
 The system operates autonomously through two independent, decoupled agent roles scheduled in hourly execution containers:
 
 ### Extractor Agent
-- Polls the **Processing Queue** (`.pipeline/queue.json`) for papers in `unprocessed` state.
+- Polls the **Processing Queue** (`.pipeline/queue.json` or `.pipeline/queue.db`) for papers in `unprocessed` state.
 - Executes `ppq-render` to convert PDF pages to 200 DPI PNG images.
 - Invokes multimodal vision models against content pages using `prompts/vision_slicing.md`.
 - Excises student **Answer Workspace** lines while preserving question text, mathematical notation, diagrams, and mark brackets.
-- Generates `manifest.json` and runs `ppq-crop` to assemble modular Question Packages.
+- Generates `manifest.json` and runs `ppq-crop` to assemble modular Question Packages and automatically ingest records into SQLite.
 - Updates queue status to `extracted` with `--extracted-marks`.
 
 ### Verifier Agent
@@ -41,14 +44,18 @@ The system operates autonomously through two independent, decoupled agent roles 
 - Audits mark-sum balance against component syllabus invariants (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Probability).
 - Checks question numeral visibility, ensuring top-level numbers (especially Question 1) were not clipped or excised.
 - Performs visual reconciliation of each Question Package against source page images.
-- Autonomously patches minor coordinate flaws in `manifest.json` and re-runs `ppq-crop`.
+- Autonomously patches minor coordinate flaws in `manifest.json` and re-runs `ppq-crop` (atomically re-syncing image crops and database tables).
 - Approves paper as `verified` or flags persistent anomalies as `needs_rework`.
 
 ---
 
-## 3. Two-Tier Question Package Model
+## 3. Two-Tier Question Package Model & Unified Database
 
-As formalized in [ADR 0001](adr/0001-question-package-and-decoupled-stem-architecture.md), shared preamble stems are decoupled from individual Question Parts:
+As formalized in [ADR 0001](adr/0001-question-package-and-decoupled-stem-architecture.md) and Spec #17:
+
+1. Shared preamble stems are decoupled from individual Question Parts.
+2. Question Packages under `questions/q{NN}/` contain pure media assets (`preamble.png`, `part_{label}.png`, `full.png`). Redundant per-question `question.json` metadata descriptors are deprecated by default.
+3. Metadata authority is consolidated into the paper-level `manifest.json` and synchronized atomically into the SQLite database (`.pipeline/queue.db`).
 
 ```
 data/output/<paper_id>/
@@ -61,11 +68,9 @@ data/output/<paper_id>/
     │   ├── full.png           # Stitched Composite Question Image
     │   ├── part_a.png         # Isolated Question Part Image
     │   ├── part_b.png         # Isolated Question Part Image
-    │   ├── preamble.png       # Standalone Question Preamble Image (if stem exists)
-    │   └── question.json      # Atomic metadata descriptor
+    │   └── preamble.png       # Standalone Question Preamble Image (if stem exists)
     └── q02/
-        ├── full.png
-        └── question.json
+        └── full.png
 ```
 
 ### Assets per Question Package
@@ -73,7 +78,8 @@ data/output/<paper_id>/
 1. **Question Preamble Image (`preamble.png`)**: Standalone crop containing context, formulas, or diagrams preceding the first Question Part.
 2. **Question Part Image (`part_{label}.png`)**: Isolated sub-component crop without prepending the preamble.
 3. **Composite Question Image (`full.png`)**: Stitched image uniting preamble and all parts with candidate answer workspaces removed.
-4. **Item Metadata (`question.json`)**: Declares marks, bounding coordinates, context dependencies (`["preamble"]`), and Syllabus Topic Codes.
+4. **Relational Database (`.pipeline/queue.db`)**: Normalized 6-table SQLite schema (`papers`, `questions`, `question_parts`, `topics`, `question_topics`, `slices`) queried via `QuestionRepository` in `tools.db.repository`.
+5. **Item Metadata (`question.json`)**: Legacy metadata descriptor; deprecated by default and generated only with `--emit-question-json`.
 
 ---
 

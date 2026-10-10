@@ -745,6 +745,76 @@ def main(argv: list[str] | None = None) -> int:
         help="SQLite database ledger path (e.g. .pipeline/queue.db)",
     )
 
+    # Subcommand: query
+    query_parser = subparsers.add_parser(
+        "query",
+        help="Query questions or parts from the SQLite question bank by topic/metadata",
+    )
+    query_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="Target SQLite database path (default: .pipeline/queue.db)",
+    )
+    query_parser.add_argument(
+        "--topic",
+        dest="topic_code",
+        help="Syllabus Topic Code (e.g. '1.1', '1.8')",
+    )
+    query_parser.add_argument(
+        "--syllabus",
+        help="Syllabus identifier (e.g. '9709')",
+    )
+    query_parser.add_argument(
+        "--component",
+        type=int,
+        help="Component paper number (e.g. 1, 3)",
+    )
+    query_parser.add_argument(
+        "--variant",
+        type=int,
+        help="Paper variant number",
+    )
+    query_parser.add_argument(
+        "--year",
+        type=int,
+        help="Exam year (e.g. 2024)",
+    )
+    query_parser.add_argument(
+        "--year-min",
+        type=int,
+        help="Minimum exam year filter",
+    )
+    query_parser.add_argument(
+        "--year-max",
+        type=int,
+        help="Maximum exam year filter",
+    )
+    query_parser.add_argument(
+        "--session",
+        help="Exam session code ('m', 's', 'w')",
+    )
+    query_parser.add_argument(
+        "--marks-min",
+        type=int,
+        help="Minimum mark threshold",
+    )
+    query_parser.add_argument(
+        "--marks-max",
+        type=int,
+        help="Maximum mark threshold",
+    )
+    query_parser.add_argument(
+        "--parts",
+        action="store_true",
+        help="Query at the Question Part level rather than whole questions",
+    )
+    query_parser.add_argument(
+        "--format",
+        choices=["json", "table", "plain"],
+        default="json",
+        help="Output format (default: json)",
+    )
+
     args = parser.parse_args(argv)
     backend, target_path = _resolve_backend(args)
 
@@ -931,6 +1001,55 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Verified      : {summary.get('verified', 0)}")
             print(f"Needs Rework  : {summary.get('needs_rework', 0)}")
             return 0
+
+    elif args.subcommand == "query":
+        from tools.db.repository import QuestionRepository, _format_table
+
+        db_file = (
+            target_path
+            if backend == "db"
+            else (Path(args.db_path) if args.db_path else Path(".pipeline/queue.db"))
+        )
+        if not db_file.is_file():
+            sys.stderr.write(f"Database file '{db_file}' does not exist.\n")
+            return 1
+
+        with QuestionRepository(db_file) as repo:
+            if getattr(args, "parts", False):
+                results = repo.query_parts(
+                    topic_code=getattr(args, "topic_code", None),
+                    syllabus=getattr(args, "syllabus", None),
+                    component=getattr(args, "component", None),
+                    variant=getattr(args, "variant", None),
+                    year=getattr(args, "year", None),
+                    year_min=getattr(args, "year_min", None),
+                    year_max=getattr(args, "year_max", None),
+                    session=getattr(args, "session", None),
+                    min_marks=getattr(args, "marks_min", None),
+                    max_marks=getattr(args, "marks_max", None),
+                )
+                is_parts = True
+            else:
+                results = repo.query_questions(
+                    topic_code=getattr(args, "topic_code", None),
+                    syllabus=getattr(args, "syllabus", None),
+                    component=getattr(args, "component", None),
+                    variant=getattr(args, "variant", None),
+                    year=getattr(args, "year", None),
+                    year_min=getattr(args, "year_min", None),
+                    year_max=getattr(args, "year_max", None),
+                    session=getattr(args, "session", None),
+                    min_marks=getattr(args, "marks_min", None),
+                    max_marks=getattr(args, "marks_max", None),
+                )
+                is_parts = False
+
+            output_format = getattr(args, "format", "json")
+            if output_format == "json":
+                print(json.dumps(results, indent=2))
+            else:
+                print(_format_table(results, is_parts=is_parts))
+        return 0
 
     return 0
 

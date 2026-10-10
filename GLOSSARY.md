@@ -41,11 +41,11 @@ An extracted image asset containing an individual Question Part (e.g., `part_a.p
 _Avoid_: Subpart snippet, partial crop
 
 **Question Package**:
-A structured bundle representing a complete question, encapsulating its Question Preamble Image, individual Question Part Images, Composite Question Image, and machine-readable metadata linking parts to the preamble and mark allocations.
+A structured bundle representing a complete question, encapsulating its Question Preamble Image, individual Question Part Images, and Composite Question Image (with metadata indexed in `manifest.json` and the unified SQLite database).
 _Avoid_: Question folder, problem bundle
 
 **Standalone Question**:
-A question containing no divided Question Parts (e.g. an unpartitioned question carrying all marks directly). Stored as an isolated Question Package containing `full.png` and `question.json` without separate preamble or part image files.
+A question containing no divided Question Parts (e.g. an unpartitioned question carrying all marks directly). Stored as an isolated Question Package containing `full.png` (with metadata persisted in `manifest.json` and SQLite; legacy `question.json` deprecated) without separate preamble or part image files.
 _Avoid_: Single problem, unpartitioned problem
 
 **Composite Question Image**:

@@ -121,7 +121,7 @@ class TestCropSlices(unittest.TestCase):
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
-        # Manifest with Question 1 having preamble and subpart (a)
+        # Manifest with Question 1 having preamble and Question Part (a)
         # Preamble: ymin=100, ymax=200 -> on H=2000: y=200 to 400 (+-10 pad -> 190 to 410, H=220)
         # Part a:   ymin=300, ymax=400 -> on H=2000: y=600 to 800 (+-10 pad -> 590 to 810, H=220)
         manifest_data = {
@@ -192,7 +192,7 @@ class TestCropSlices(unittest.TestCase):
         if crop_and_stitch is None:
             self.fail("tools.crop_slices or crop_and_stitch not implemented")
 
-        # Question 1 with preamble and two subparts (a and b)
+        # Question 1 with preamble and two Question Parts (a and b)
         # Workspace lines exist between part a (ends at 400) and part b (starts at 500)
         # Part b is on page 2: ymin=100, ymax=200 -> H=220 (pad 10)
         manifest_data = {

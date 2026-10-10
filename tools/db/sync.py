@@ -3,7 +3,7 @@
 Ingests paper manifest.json structures into the unified relational SQLite schema:
   - papers (metadata, total marks, verifier notes)
   - questions (question items, composite/preamble assets, marks)
-  - question_parts (subparts, labels, marks, isolated part assets)
+  - question_parts (Question Parts, labels, marks, isolated part assets)
   - slices (preamble and part bounding boxes: ymin, ymax, xmin, xmax, page)
   - topics & question_topics (Syllabus Topic Codes e.g. '1.1', '1.8')
 

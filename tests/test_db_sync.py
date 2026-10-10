@@ -20,7 +20,7 @@ class TestManifestSyncToDatabase(unittest.TestCase):
         self.tmpdir.cleanup()
 
     def test_sync_single_part_question(self):
-        """Single-part question (no subparts or preamble) ingests cleanly with valid foreign keys."""
+        """Single-part question (no Question Parts or preamble) ingests cleanly with valid foreign keys."""
         manifest_data = {
             "id": "9709_w24_qp_12",
             "syllabus": "9709",
@@ -115,7 +115,7 @@ class TestManifestSyncToDatabase(unittest.TestCase):
             conn.close()
 
     def test_sync_multipart_question_with_preamble(self):
-        """Multipart question with preamble slice and subparts ingests with appropriate foreign keys."""
+        """Multipart question with preamble slice and Question Parts ingests with appropriate foreign keys."""
         manifest_data = {
             "id": "9709_w24_qp_12",
             "syllabus": "9709",
@@ -274,7 +274,7 @@ class TestManifestSyncToDatabase(unittest.TestCase):
         finally:
             conn.close()
 
-        # Verifier repairs: Q1 coordinate adjusted, Q2 removed, Q3 added with 2 subparts
+        # Verifier repairs: Q1 coordinate adjusted, Q2 removed, Q3 added with 2 Question Parts
         manifest_v2 = {
             "id": "9709_w24_qp_12",
             "syllabus": "9709",

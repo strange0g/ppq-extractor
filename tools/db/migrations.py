@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS questions (
 CREATE INDEX IF NOT EXISTS idx_questions_paper_id ON questions(paper_id);
 CREATE INDEX IF NOT EXISTS idx_questions_number ON questions(question_number);
 
--- 4. Question Parts: subparts with labels, marks, isolated asset path, preamble context
+-- 4. Question Parts: Question Parts with labels, marks, isolated asset path, preamble context
 CREATE TABLE IF NOT EXISTS question_parts (
     id TEXT PRIMARY KEY,
     question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS question_parts (
 
 CREATE INDEX IF NOT EXISTS idx_question_parts_question_id ON question_parts(question_id);
 
--- 5. Question Topics: many-to-many junction indexing questions and subparts by Syllabus Topic Codes
+-- 5. Question Topics: many-to-many junction indexing questions and Question Parts by Syllabus Topic Codes
 CREATE TABLE IF NOT EXISTS question_topics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,

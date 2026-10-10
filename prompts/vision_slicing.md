@@ -43,6 +43,8 @@ Analyze this page image and identify all question components, their question par
 6. **Standalone Questions Without Parts**:
    - For questions that do not contain divided question parts (e.g., a single unpartitioned question carrying all marks), classify the slice as `"kind": "whole"` with `"part_label": null`.
    - Standalone questions carry the total question marks directly on the slice.
+   - **Full Prompt & Mark Bracket Coverage**: For standalone questions containing diagrams or formulas, `ymax` MUST strictly extend below both the diagram AND the textual instruction prompt containing the right-margin mark bracket `[X]` before candidate answer workspace lines begin. Never truncate `ymax` immediately after a diagram.
+   - Downstream tools store standalone questions directly as `full.png` without creating redundant `part.png` or `preamble.png` crops.
 
 7. **Multi-Slice Parts & Mid-Question Sub-Preambles**:
    - When a question part spans across pages or includes introductory stem context immediately preceding that specific part (e.g., `"The function g is defined by ... for x <= 0"` appearing before part `(c)` across a page break), enclose the introductory context within that part's vertical boundary or list its sequential slices.

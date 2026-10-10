@@ -15,7 +15,7 @@ When instantiated in your scheduled hourly container run, execute the following 
 ### 1. Queue Polling & Prioritization
 Query the master Processing Queue ledger via the CLI to claim the next paper candidate:
 ```bash
-python3 -m tools.queue_manager next --role extractor
+uv run ppq-queue next --role extractor
 ```
 The queue manager prioritizes papers automatically:
 - **Priority 1**: Papers with status `"needs_rework"` (read previous verification feedback notes).
@@ -32,7 +32,7 @@ Note the target paper attributes from the queue output:
 ### 2. High-Speed PDF Page Conversion
 Convert the paper's PDF into 200 DPI PNG images using the deterministic rendering CLI tool:
 ```bash
-python3 -m tools.pdf_to_images --pdf "<source_pdf>" --out-dir "<output_dir>/pages" --dpi 200
+uv run ppq-render --pdf "<source_pdf>" --out-dir "<output_dir>/pages" --dpi 200
 ```
 This produces crisp renders at `<output_dir>/pages/page_01.png`, `page_02.png`, ..., `page_NN.png`.
 
@@ -55,14 +55,18 @@ Assemble the per-paper `<output_dir>/manifest.json` cataloging questions, preamb
 
 Execute the deterministic cropping tool to generate modular Question Packages:
 ```bash
-python3 -m tools.crop_slices --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
+uv run ppq-crop --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
 ```
 
-This populates two-tier Question Packages under `<output_dir>/questions/q{NN}/`:
-- `preamble.png`: Question Preamble Image (when preamble is present).
-- `part_{label}.png`: Isolated Question Part Images (e.g., `part_a.png`, `part_b.png`) strictly without prepending preamble.
-- `full.png`: Composite Question Image stitching preamble and all parts with 20px white divider spacing and student answer workspaces excised.
-- `question.json`: Atomic item-level metadata descriptor declaring question ID, total marks, preamble metadata, and Question Parts with `context_dependencies: ["preamble"]`.
+This populates modular Question Packages under `<output_dir>/questions/q{NN}/`:
+- **Multipart Questions**:
+  - `preamble.png`: Question Preamble Image (when preamble is present).
+  - `part_{label}.png`: Isolated Question Part Images strictly without prepending preamble.
+  - `full.png`: Composite Question Image stitching preamble and all parts with 20px white divider spacing and student answer workspaces excised.
+- **Standalone Questions**:
+  - `full.png`: Unified question image without redundant part or preamble crops.
+- **Metadata**:
+  - `question.json`: Atomic item-level metadata descriptor declaring question ID, total marks, preamble metadata, and Question Parts with `context_dependencies: ["preamble"]` when preamble is present.
 
 Verify Question Package integrity:
 - Confirm `<output_dir>/manifest.json` is updated with `question_index` linking each question package.
@@ -74,7 +78,7 @@ $$\text{extracted\_marks} = \sum_{\text{questions}} \sum_{\text{parts}} \text{ma
 
 Update paper status in the master Processing Queue ledger using the CLI:
 ```bash
-python3 -m tools.queue_manager update --id "<paper_id>" --status extracted --extracted-marks <total_marks>
+uv run ppq-queue update --id "<paper_id>" --status extracted --extracted-marks <total_marks>
 ```
 
 ### 6. Atomic Git Commit

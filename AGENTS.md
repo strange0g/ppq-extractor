@@ -27,6 +27,8 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - When extracting vertical coordinates, `ymin` must strictly encompass top-level question numerals (e.g. bold "1", "2") with an upward safety buffer of at least 15 normalized units (~15px) so question numbers are never clipped or excised.
 5. **No Nested LLM Loops**:
    - Agents run in scheduled hourly autonomous containers without spawning unmanaged inner LLM API loops.
+6. **Workflow & Prompt Synchronization**:
+   - Any changes to execution tools, scripts, CLI flags, or workflows (such as canonical `uv run` commands) must be kept strictly synchronized across [`AGENTS.md`](AGENTS.md), [`prompts/extractor_agent.md`](prompts/extractor_agent.md), [`prompts/verifier_agent.md`](prompts/verifier_agent.md), and [`prompts/vision_slicing.md`](prompts/vision_slicing.md). Prompt files must never use legacy bare interpreters or unsynchronized command flags.
 
 ---
 
@@ -39,7 +41,7 @@ Agents must navigate the repository using context pointers rather than loading u
 - [`docs/architecture.md`](docs/architecture.md): Deep-dive pipeline lifecycle, two-tier Question Package model, coordinate spaces, and margin trimming.
 - [`docs/development.md`](docs/development.md): CLI reference flags, test suite breakdown, and developer tools.
 - [`GLOSSARY.md`](GLOSSARY.md): Authoritative domain definitions and terminology rules.
-- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming).
+- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming, `0003` Standalone Question Packages & workflow sync).
 
 ---
 

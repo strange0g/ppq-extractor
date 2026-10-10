@@ -637,15 +637,12 @@ class TestCropSlices(unittest.TestCase):
         self.assertTrue((q1_dir / "full.png").is_file())
         self.assertTrue((q1_dir / "question.json").is_file())
 
-        # Q2 has whole question: part.png or part_whole.png and full.png
+        # Q2 has standalone whole question: full.png and question.json without redundant part.png
         q2_dir = self.crops_dir / "questions" / "q02"
         self.assertTrue((q2_dir / "full.png").is_file())
         self.assertTrue((q2_dir / "question.json").is_file())
-        self.assertTrue(
-            (q2_dir / "part.png").is_file()
-            or (q2_dir / "part_whole.png").is_file()
-            or (q2_dir / "part_1.png").is_file()
-        )
+        self.assertFalse((q2_dir / "part.png").exists())
+        self.assertFalse((q2_dir / "preamble.png").exists())
 
     def test_format_part_naming_helper(self):
         """Test _format_part_naming helper cleans labels and formats ids."""

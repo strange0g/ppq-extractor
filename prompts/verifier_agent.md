@@ -15,7 +15,7 @@ When instantiated in your scheduled hourly container run, execute the following 
 ### 1. Queue Polling & Paper Claim
 Query the master Processing Queue ledger via the CLI to claim the next paper awaiting verification:
 ```bash
-python3 -m tools.queue_manager next --role verifier
+uv run ppq-queue next --role verifier
 ```
 The queue manager returns the first available paper with status `"extracted"`.
 If the command indicates that no papers are pending verification, log `"No papers pending verification"` and terminate cleanly.
@@ -44,7 +44,9 @@ Inspect each Question Package under `<output_dir>/questions/q{NN}/`:
 - **Question Number Visibility (Question Numeral Invariant)**:
   - Specifically verify Question 1 and all subsequent questions: the top-level question numeral (e.g. bold "1", "2") must be clearly visible and legible at the top of the question asset (preamble, first part, or composite).
   - Ensure the upward safety buffer was applied so that question numbers and headings are never clipped or excised.
-- **Decoupled Asset Integrity**:
+- **Standalone Question Completeness**:
+  - For standalone questions without divided parts, verify `full.png` contains all prompt text, diagram(s), and the right-margin mark bracket `[X]` before handwriting lines start. Verify no duplicate `part.png` or `preamble.png` files are present.
+- **Decoupled Multipart Asset Integrity**:
   - `preamble.png`: Present if the question has stem introductory context or diagrams; contains only the stem content.
   - `part_{label}.png`: Isolated Question Part Images containing strictly that Question Part prompt and its mark tag, without repeating the preamble.
   - `full.png`: Composite Question Image containing preamble and all parts neatly stitched with 20px dividers.
@@ -65,11 +67,11 @@ Audit item-level metadata in `<output_dir>/questions/q{NN}/question.json` and ro
 When minor discrepancies or coordinate flaws are identified:
 - **Adjust Coordinates**: Edit `ymin` or `ymax` in `<output_dir>/manifest.json`:
   - Decrease `ymin` (apply upward safety buffer) if a question number, exponent, or formula top is clipped.
-  - Adjust `ymax` to eliminate stray dotted answer lines.
+  - Adjust `ymax` to eliminate stray dotted answer lines, or extend `ymax` if standalone question prompt/mark bracket was cut short.
 - **Add Missing Items**: If a question part was omitted during extraction, insert its slice definition into `manifest.json`.
 - **Re-run Cropping Tool**:
   ```bash
-  python3 -m tools.crop_slices --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
+  uv run ppq-crop --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
   ```
 - **Re-audit Question Packages**: Confirm the re-generated crops, `question.json` files, and `manifest.json` are complete, clean, and unclipped.
 
@@ -81,7 +83,7 @@ When minor discrepancies or coordinate flaws are identified:
    - Record verification timestamp and audit checklist results (`mark_sum_match: true`, `clipping_free: true`, `workspace_excised: true`, `question_numbers_intact: true`).
 2. Update the master Processing Queue ledger via the CLI:
    ```bash
-   python3 -m tools.queue_manager update --id "<paper_id>" --status verified
+   uv run ppq-queue update --id "<paper_id>" --status verified
    ```
 3. Stage changes and commit atomically:
    ```bash
@@ -93,7 +95,7 @@ When minor discrepancies or coordinate flaws are identified:
 If the paper exhibits structural defects that cannot be repaired autonomously:
 1. Update the master Processing Queue ledger via the CLI, providing detailed audit notes:
    ```bash
-   python3 -m tools.queue_manager update --id "<paper_id>" --status needs_rework --notes "Explicit failure details: e.g. Page 7 corrupted, question 5 part b missing diagram from original scan"
+   uv run ppq-queue update --id "<paper_id>" --status needs_rework --notes "Explicit failure details: e.g. Page 7 corrupted, question 5 part b missing diagram from original scan"
    ```
 2. Stage and commit:
    ```bash

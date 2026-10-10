@@ -238,7 +238,11 @@ class TestPromptsAndGuidelines(unittest.TestCase):
 
     def test_prompts_require_uv_run_workflow(self):
         """Ensure all prompt templates use canonical 'uv run' commands exclusively."""
-        for filename in ["extractor_agent.md", "verifier_agent.md"]:
+        for filename in [
+            "extractor_agent.md",
+            "verifier_agent.md",
+            "vision_slicing.md",
+        ]:
             prompt_file = REPO_ROOT / "prompts" / filename
             content = prompt_file.read_text(encoding="utf-8")
             # Must not use bare 'python3 -m tools.' in bash command blocks

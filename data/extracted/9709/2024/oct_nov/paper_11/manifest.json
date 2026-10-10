@@ -37,7 +37,8 @@
     "clipping_free": true,
     "workspace_excised": true,
     "question_numbers_intact": true,
-    "notes": "Repaired Question 3 ymax coordinate (extended from 315 to 350) to fully capture prompt and mark bracket [5]. All 11 questions and parts verified unclipped with intact question numbers and excised answer workspaces."
+    "notes": "Repaired Question 3 ymax coordinate (extended from 315 to 350) to fully capture prompt and mark bracket [5]. All 11 questions and parts verified unclipped with intact question numbers and excised answer workspaces.",
+    "balance_check": true
   },
   "questions": [
     {
@@ -65,7 +66,7 @@
               ]
             }
           ],
-          "asset_path": "questions/q01/part.png",
+          "asset_path": "questions/q01/full.png",
           "width": 1654,
           "height": 162
         }
@@ -103,7 +104,7 @@
               ]
             }
           ],
-          "asset_path": "questions/q02/part.png",
+          "asset_path": "questions/q02/full.png",
           "width": 1654,
           "height": 151
         }
@@ -149,7 +150,7 @@
             "1.4"
           ],
           "context_dependencies": [],
-          "asset_path": "questions/q03/part.png",
+          "asset_path": "questions/q03/full.png",
           "width": 1654,
           "height": 665
         }
@@ -187,7 +188,7 @@
               ]
             }
           ],
-          "asset_path": "questions/q04/part.png",
+          "asset_path": "questions/q04/full.png",
           "width": 1654,
           "height": 115
         }

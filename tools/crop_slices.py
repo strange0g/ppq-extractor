@@ -563,6 +563,16 @@ def crop_and_stitch(
                 # Standalone Question: The composite full.png serves as the primary asset; avoid saving duplicate part.png
                 filename = "full.png"
                 part_file = q_pkg_dir / "full.png"
+                # Clean up any stale redundant part.png or preamble.png on disk
+                for stale_name in (
+                    "part.png",
+                    "part_1.png",
+                    "part_whole.png",
+                    "preamble.png",
+                ):
+                    stale_file = q_pkg_dir / stale_name
+                    if stale_file.is_file():
+                        stale_file.unlink()
             else:
                 # Multipart Question: Save isolated Question Part Image
                 part_file = q_pkg_dir / filename

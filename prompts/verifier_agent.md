@@ -45,7 +45,7 @@ Inspect each Question Package under `<output_dir>/questions/q{NN}/`:
   - Specifically verify Question 1 and all subsequent questions: the top-level question numeral (e.g. bold "1", "2") must be clearly visible and legible at the top of the question asset (preamble, first part, or composite).
   - Ensure the upward safety buffer was applied so that question numbers and headings are never clipped or excised.
 - **Standalone Question Completeness**:
-  - For standalone questions without divided parts, verify `full.png` contains all prompt text, diagram(s), and the right-margin mark bracket `[X]` before handwriting lines start. Verify no duplicate `part.png` or `preamble.png` files are present.
+  - For standalone questions without divided parts, verify `full.png` contains all prompt text, diagram(s), and the right-margin mark bracket `[X]` before candidate answer workspace lines start. Verify no duplicate `part.png` or `preamble.png` files are present.
 - **Decoupled Multipart Asset Integrity**:
   - `preamble.png`: Present if the question has stem introductory context or diagrams; contains only the stem content.
   - `part_{label}.png`: Isolated Question Part Images containing strictly that Question Part prompt and its mark tag, without repeating the preamble.

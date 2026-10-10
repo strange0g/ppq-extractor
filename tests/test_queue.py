@@ -526,5 +526,152 @@ class TestQueueManagerCLI(unittest.TestCase):
         self.assertNotEqual(res_err.returncode, 0)
 
 
+class TestQueueDatabase(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.test_dir = Path(self.tmpdir.name)
+        self.db_path = self.test_dir / "queue.db"
+        self.json_path = self.test_dir / "queue.json"
+
+        # Create sample queue JSON
+        sample_data = {
+            "version": "1.0",
+            "papers": [
+                {
+                    "id": "9709_w24_qp_12",
+                    "syllabus": "9709",
+                    "year": 2024,
+                    "session": "w",
+                    "session_slug": "oct_nov",
+                    "component": 1,
+                    "variant": 2,
+                    "source_pdf": "9709/2024/2024 Nov/9709_w24_qp_12.pdf",
+                    "status": "unprocessed",
+                    "total_pages": 20,
+                    "mode": "write_in",
+                    "expected_marks": 75,
+                    "extracted_marks": None,
+                    "output_dir": "data/extracted/9709/2024/oct_nov/paper_12",
+                    "extracted_at": None,
+                    "verified_at": None,
+                    "verifier_notes": None,
+                },
+                {
+                    "id": "9709_w24_qp_42",
+                    "syllabus": "9709",
+                    "year": 2024,
+                    "session": "w",
+                    "session_slug": "oct_nov",
+                    "component": 4,
+                    "variant": 2,
+                    "source_pdf": "9709/2024/2024 Nov/9709_w24_qp_42.pdf",
+                    "status": "needs_rework",
+                    "total_pages": 12,
+                    "mode": "write_in",
+                    "expected_marks": 50,
+                    "extracted_marks": 45,
+                    "output_dir": "data/extracted/9709/2024/oct_nov/paper_42",
+                    "extracted_at": "2026-10-01T12:00:00Z",
+                    "verified_at": None,
+                    "verifier_notes": "Needs rework note",
+                },
+            ],
+        }
+        self.json_path.write_text(json.dumps(sample_data, indent=2))
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def run_cli(self, args: list[str]) -> subprocess.CompletedProcess:
+        cmd = [sys.executable, "-m", "tools.queue_manager"] + args
+        env = dict(os.environ)
+        repo_root = str(Path(__file__).parent.parent)
+        existing_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{repo_root}:{existing_pp}" if existing_pp else repo_root
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(self.test_dir),
+            env=env,
+        )
+
+    def test_migrate_json_and_sqlite_queries(self):
+        from tools.queue_manager import QueueDatabase
+
+        db = QueueDatabase(self.db_path)
+        count = db.migrate_from_json(self.json_path)
+        self.assertEqual(count, 2)
+
+        summary = db.get_summary()
+        self.assertEqual(summary["total"], 2)
+        self.assertEqual(summary["unprocessed"], 1)
+        self.assertEqual(summary["needs_rework"], 1)
+
+        # Extractor priority 1: needs_rework candidate
+        next_ext = db.get_next_paper("extractor")
+        self.assertIsNotNone(next_ext)
+        self.assertEqual(next_ext["id"], "9709_w24_qp_42")
+
+        # Update status to extracted
+        updated = db.update_paper_status(
+            "9709_w24_qp_42", "extracted", extracted_marks=50
+        )
+        self.assertEqual(updated["status"], "extracted")
+        self.assertEqual(updated["extracted_marks"], 50)
+
+        # Verifier candidate is now 9709_w24_qp_42
+        next_ver = db.get_next_paper("verifier")
+        self.assertIsNotNone(next_ver)
+        self.assertEqual(next_ver["id"], "9709_w24_qp_42")
+
+    def test_cli_migrate_and_next(self):
+        # Test CLI migrate-json
+        res_mig = self.run_cli(
+            [
+                "migrate-json",
+                "--json-file",
+                str(self.json_path),
+                "--db-path",
+                str(self.db_path),
+            ]
+        )
+        self.assertEqual(res_mig.returncode, 0, res_mig.stderr)
+        self.assertTrue(self.db_path.exists())
+
+        # Test CLI next on SQLite DB
+        res_next = self.run_cli(
+            ["next", "--role", "extractor", "--db-path", str(self.db_path)]
+        )
+        self.assertEqual(res_next.returncode, 0, res_next.stderr)
+        paper = json.loads(res_next.stdout)
+        self.assertEqual(paper["id"], "9709_w24_qp_42")
+
+        # Test CLI update on SQLite DB
+        res_upd = self.run_cli(
+            [
+                "update",
+                "--id",
+                "9709_w24_qp_42",
+                "--status",
+                "extracted",
+                "--extracted-marks",
+                "50",
+                "--db-path",
+                str(self.db_path),
+            ]
+        )
+        self.assertEqual(res_upd.returncode, 0, res_upd.stderr)
+
+        # Test CLI show on SQLite DB
+        res_show = self.run_cli(
+            ["show", "--id", "9709_w24_qp_42", "--db-path", str(self.db_path)]
+        )
+        self.assertEqual(res_show.returncode, 0, res_show.stderr)
+        shown = json.loads(res_show.stdout)
+        self.assertEqual(shown["status"], "extracted")
+        self.assertEqual(shown["extracted_marks"], 50)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,80 @@
+{
+  "id": "9709_w24_qp_11_q07",
+  "paper_id": "9709_w24_qp_11",
+  "question_number": 7,
+  "total_marks": 8,
+  "preamble": {
+    "present": true,
+    "asset_path": "preamble.png",
+    "dimensions": {
+      "width": 1654,
+      "height": 639
+    },
+    "slices": [
+      {
+        "page": 8,
+        "ymin": 74,
+        "xmin": 0,
+        "ymax": 339,
+        "xmax": 1000
+      }
+    ]
+  },
+  "parts": [
+    {
+      "part_id": "9709_w24_qp_11_q07_a",
+      "label": "a",
+      "marks": 4,
+      "isolated_asset_path": "part_a.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 100
+      },
+      "slices": [
+        {
+          "page": 8,
+          "ymin": 341,
+          "xmin": 0,
+          "ymax": 375,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    },
+    {
+      "part_id": "9709_w24_qp_11_q07_b",
+      "label": "b",
+      "marks": 4,
+      "isolated_asset_path": "part_b.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 115
+      },
+      "slices": [
+        {
+          "page": 9,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 115,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    }
+  ],
+  "composite": {
+    "asset_path": "full.png",
+    "dimensions": {
+      "width": 1654,
+      "height": 894
+    }
+  },
+  "taxonomy": {
+    "topics": [],
+    "has_diagram": true
+  }
+}

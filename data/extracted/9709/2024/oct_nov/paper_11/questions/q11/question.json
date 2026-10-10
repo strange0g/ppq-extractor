@@ -1,0 +1,124 @@
+{
+  "id": "9709_w24_qp_11_q11",
+  "paper_id": "9709_w24_qp_11",
+  "question_number": 11,
+  "total_marks": 11,
+  "preamble": {
+    "present": true,
+    "asset_path": "preamble.png",
+    "dimensions": {
+      "width": 1654,
+      "height": 80
+    },
+    "slices": [
+      {
+        "page": 16,
+        "ymin": 74,
+        "xmin": 0,
+        "ymax": 100,
+        "xmax": 1000
+      }
+    ]
+  },
+  "parts": [
+    {
+      "part_id": "9709_w24_qp_11_q11_a",
+      "label": "a",
+      "marks": 3,
+      "isolated_asset_path": "part_a.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 132
+      },
+      "slices": [
+        {
+          "page": 16,
+          "ymin": 102,
+          "xmin": 0,
+          "ymax": 150,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    },
+    {
+      "part_id": "9709_w24_qp_11_q11_b",
+      "label": "b",
+      "marks": 2,
+      "isolated_asset_path": "part_b.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 219
+      },
+      "slices": [
+        {
+          "page": 16,
+          "ymin": 575,
+          "xmin": 0,
+          "ymax": 660,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    },
+    {
+      "part_id": "9709_w24_qp_11_q11_c",
+      "label": "c",
+      "marks": 2,
+      "isolated_asset_path": "part_c.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 197
+      },
+      "slices": [
+        {
+          "page": 17,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 150,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    },
+    {
+      "part_id": "9709_w24_qp_11_q11_d",
+      "label": "d",
+      "marks": 4,
+      "isolated_asset_path": "part_d.png",
+      "dimensions": {
+        "width": 1654,
+        "height": 184
+      },
+      "slices": [
+        {
+          "page": 17,
+          "ymin": 500,
+          "xmin": 0,
+          "ymax": 570,
+          "xmax": 1000
+        }
+      ],
+      "context_dependencies": [
+        "preamble"
+      ]
+    }
+  ],
+  "composite": {
+    "asset_path": "full.png",
+    "dimensions": {
+      "width": 1654,
+      "height": 892
+    }
+  },
+  "taxonomy": {
+    "topics": [],
+    "has_diagram": true
+  }
+}

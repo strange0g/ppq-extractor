@@ -52,7 +52,10 @@
       "total_question_marks": 4,
       "composite_asset_path": "questions/q01/full.png",
       "composite_width": 1654,
-      "composite_height": 162
+      "composite_height": 162,
+      "topics": [
+        "1.6"
+      ]
     },
     {
       "number": 2,
@@ -78,7 +81,10 @@
       "total_question_marks": 4,
       "composite_asset_path": "questions/q02/full.png",
       "composite_width": 1654,
-      "composite_height": 151
+      "composite_height": 151,
+      "topics": [
+        "1.5"
+      ]
     },
     {
       "number": 3,
@@ -104,7 +110,10 @@
       "total_question_marks": 5,
       "composite_asset_path": "questions/q03/full.png",
       "composite_width": 1654,
-      "composite_height": 665
+      "composite_height": 665,
+      "topics": [
+        "1.4"
+      ]
     },
     {
       "number": 4,
@@ -130,7 +139,10 @@
       "total_question_marks": 5,
       "composite_asset_path": "questions/q04/full.png",
       "composite_width": 1654,
-      "composite_height": 115
+      "composite_height": 115,
+      "topics": [
+        "1.6"
+      ]
     },
     {
       "number": 5,
@@ -179,7 +191,11 @@
       "total_question_marks": 7,
       "composite_asset_path": "questions/q05/full.png",
       "composite_width": 1654,
-      "composite_height": 333
+      "composite_height": 333,
+      "topics": [
+        "1.7",
+        "1.8"
+      ]
     },
     {
       "number": 6,
@@ -228,7 +244,10 @@
       "total_question_marks": 7,
       "composite_asset_path": "questions/q06/full.png",
       "composite_width": 1654,
-      "composite_height": 509
+      "composite_height": 509,
+      "topics": [
+        "1.1"
+      ]
     },
     {
       "number": 7,
@@ -277,7 +296,11 @@
       "total_question_marks": 8,
       "composite_asset_path": "questions/q07/full.png",
       "composite_width": 1654,
-      "composite_height": 894
+      "composite_height": 894,
+      "topics": [
+        "1.7",
+        "1.8"
+      ]
     },
     {
       "number": 8,
@@ -319,7 +342,10 @@
       "total_question_marks": 8,
       "composite_asset_path": "questions/q08/full.png",
       "composite_width": 1654,
-      "composite_height": 286
+      "composite_height": 286,
+      "topics": [
+        "1.5"
+      ]
     },
     {
       "number": 9,
@@ -368,7 +394,10 @@
       "total_question_marks": 8,
       "composite_asset_path": "questions/q09/full.png",
       "composite_width": 1654,
-      "composite_height": 391
+      "composite_height": 391,
+      "topics": [
+        "1.7"
+      ]
     },
     {
       "number": 10,
@@ -417,7 +446,10 @@
       "total_question_marks": 8,
       "composite_asset_path": "questions/q10/full.png",
       "composite_width": 1654,
-      "composite_height": 484
+      "composite_height": 484,
+      "topics": [
+        "1.6"
+      ]
     },
     {
       "number": 11,
@@ -498,7 +530,11 @@
       "total_question_marks": 11,
       "composite_asset_path": "questions/q11/full.png",
       "composite_width": 1654,
-      "composite_height": 892
+      "composite_height": 892,
+      "topics": [
+        "1.1",
+        "1.2"
+      ]
     }
   ],
   "question_index": [
@@ -577,6 +613,8 @@
       "clipping_free": true,
       "workspace_excised": true,
       "question_numbers_intact": true
-    }
+    },
+    "extracted_marks": 75,
+    "balance_check": false
   }
 }

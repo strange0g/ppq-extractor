@@ -15,7 +15,63 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from PIL import Image
+from PIL import Image, ImageDraw
+
+
+def detect_page_margin_trim(page_img: Image.Image) -> Tuple[int, int]:
+    """Detect and return horizontal content bounds (x1, x2) in pixels, trimming outer margin text.
+
+    Cambridge write-in papers starting around 2024 include vertical margin warning text
+    ('DO NOT WRITE IN THIS MARGIN') on the outer margins (right margin on even pages, left margin on odd pages).
+    This function detects dark markings in the outer 4.5% horizontal strip and trims that strip automatically
+    while preserving the full question content, diagrams, and mark brackets.
+    """
+    w, h = page_img.size
+    left_strip_w = int(w * 0.045)
+    right_strip_w = int(w * 0.045)
+    sample_box_left = (0, int(h * 0.15), left_strip_w, int(h * 0.85))
+    sample_box_right = (w - right_strip_w, int(h * 0.15), w, int(h * 0.85))
+
+    gray = page_img.convert("L")
+    left_crop = gray.crop(sample_box_left)
+    right_crop = gray.crop(sample_box_right)
+
+    has_left = (
+        left_crop.getextrema()[0] < 180
+        and sum(left_crop.histogram()[:180]) / (left_crop.width * left_crop.height) > 0.005
+    )
+    has_right = (
+        right_crop.getextrema()[0] < 180
+        and sum(right_crop.histogram()[:180]) / (right_crop.width * right_crop.height) > 0.005
+    )
+
+    x1 = left_strip_w if has_left else 0
+    x2 = (w - right_strip_w) if has_right else w
+    return x1, x2
+
+
+def mask_margin_strip(
+    crop_img: Image.Image,
+    page_img: Image.Image,
+    bg_color: Tuple[int, int, int] = (255, 255, 255),
+) -> Image.Image:
+    """Mask out vertical outer margin warnings with background color while preserving full image width."""
+    mx1, mx2 = detect_page_margin_trim(page_img)
+    w, h = crop_img.size
+    has_left = mx1 > 0
+    has_right = mx2 < page_img.width
+
+    if not has_left and not has_right:
+        return crop_img
+
+    masked = crop_img.copy()
+    draw = ImageDraw.Draw(masked)
+    if has_left and mx1 <= w:
+        draw.rectangle([(0, 0), (mx1, h)], fill=bg_color)
+    if has_right and mx2 < page_img.width:
+        right_start = max(0, w - (page_img.width - mx2))
+        draw.rectangle([(right_start, 0), (w, h)], fill=bg_color)
+    return masked
 
 
 def translate_coordinates(
@@ -122,8 +178,9 @@ def _crop_slice(
     slice_info: Dict[str, Any],
     pad: int,
     page_cache: Dict[int, Image.Image],
+    trim_margins: bool = True,
 ) -> Image.Image:
-    """Crop full-width slice from source page."""
+    """Crop full-width slice from source page with automatic margin suppression."""
     page_num, ymin, ymax = _extract_slice_bounds(slice_info)
     page_img = _load_page_image(pages_dir, page_num, page_cache)
     x1, y1, x2, y2 = translate_coordinates(
@@ -133,7 +190,10 @@ def _crop_slice(
         page_height=page_img.height,
         pad=pad,
     )
-    return page_img.crop((x1, y1, x2, y2))
+    cropped = page_img.crop((x1, y1, x2, y2))
+    if trim_margins:
+        cropped = mask_margin_strip(cropped, page_img)
+    return cropped
 
 
 def concatenate_vertical(
@@ -144,7 +204,7 @@ def concatenate_vertical(
     """Concatenate a sequence of images vertically with spacing separator.
 
     Args:
-        slices: List of Image objects with equal width.
+        slices: List of Image objects.
         spacing: Height in pixels of divider between adjacent images.
         bg_color: Background color for divider (default white).
 
@@ -157,12 +217,12 @@ def concatenate_vertical(
     if len(slices) == 1:
         return slices[0].copy()
 
-    width = slices[0].width
+    max_width = max(s.width for s in slices)
     total_height = sum(s.height for s in slices) + (len(slices) - 1) * spacing
-    canvas = Image.new("RGB", (width, total_height), bg_color)
+    canvas = Image.new("RGB", (max_width, total_height), bg_color)
 
     y_offset = 0
-    for i, s in enumerate(slices):
+    for s in slices:
         canvas.paste(s, (0, y_offset))
         y_offset += s.height + spacing
 
@@ -304,6 +364,7 @@ def crop_and_stitch(
     out_dir: str | Path,
     pad: int = 10,
     spacing: int = 20,
+    trim_margins: bool = True,
 ) -> Dict[str, Any]:
     """Process question slices from manifest.json and write cropped Question Packages.
 
@@ -321,6 +382,7 @@ def crop_and_stitch(
         out_dir: Directory where Question Packages or paper assets will be written.
         pad: Vertical padding in pixels added to each slice (default: 10).
         spacing: White separator divider between stitched parts (default: 20).
+        trim_margins: Automatically trim outer margin warning text (default: True).
 
     Returns:
         Summary dict containing crops metadata and updated manifest.
@@ -393,7 +455,7 @@ def crop_and_stitch(
 
         preamble_imgs: List[Image.Image] = []
         for p_slice in preamble_slice_list:
-            preamble_imgs.append(_crop_slice(pages_path, p_slice, pad, page_cache))
+            preamble_imgs.append(_crop_slice(pages_path, p_slice, pad, page_cache, trim_margins=trim_margins))
 
         preamble_img: Image.Image | None = None
         preamble_meta: Dict[str, Any] = {
@@ -448,7 +510,7 @@ def crop_and_stitch(
                 continue
 
             part_slice_imgs = [
-                _crop_slice(pages_path, s, pad, page_cache) for s in slices_info
+                _crop_slice(pages_path, s, pad, page_cache, trim_margins=trim_margins) for s in slices_info
             ]
             part_main_img = concatenate_vertical(part_slice_imgs, spacing=spacing)
 
@@ -475,6 +537,7 @@ def crop_and_stitch(
             # Part metadata for question.json
             part_marks = part.get("marks")
             part_context_deps = ["preamble"] if preamble_meta["present"] else []
+            part_topics = part.get("topics") or []
 
             question_parts_meta.append({
                 "part_id": part_identifier,
@@ -486,6 +549,7 @@ def crop_and_stitch(
                     "height": part_main_img.height,
                 },
                 "slices": slices_info,
+                "topics": part_topics,
                 "context_dependencies": part_context_deps,
             })
 
@@ -525,6 +589,11 @@ def crop_and_stitch(
                 int(p["marks"]) for p in question_parts_meta if p.get("marks") is not None
             )
 
+        # Aggregate topics across question parts and question root
+        q_topics = list(dict.fromkeys(
+            (q.get("topics") or []) + [t for p in question_parts_meta for t in (p.get("topics") or [])]
+        ))
+
         # Atomic question.json
         q_json_file = q_pkg_dir / "question.json"
         q_json_content = {
@@ -536,7 +605,7 @@ def crop_and_stitch(
             "parts": question_parts_meta,
             "composite": composite_meta,
             "taxonomy": {
-                "topics": q.get("topics", []),
+                "topics": q_topics,
                 "has_diagram": bool(preamble_meta["present"] or q.get("has_diagram", False)),
             },
         }
@@ -609,6 +678,11 @@ def main(argv: list[str] | None = None) -> None:
         default=20,
         help="Vertical divider spacing in pixels (default: 20)",
     )
+    parser.add_argument(
+        "--no-trim-margins",
+        action="store_true",
+        help="Disable automatic outer margin warning trimming",
+    )
 
     args = parser.parse_args(argv)
 
@@ -619,6 +693,7 @@ def main(argv: list[str] | None = None) -> None:
             out_dir=args.out_dir,
             pad=args.pad,
             spacing=args.spacing,
+            trim_margins=not args.no_trim_margins,
         )
         print(json.dumps(summary, indent=2))
     except Exception as exc:

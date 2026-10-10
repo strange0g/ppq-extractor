@@ -58,6 +58,7 @@ Audit item-level metadata in `<output_dir>/questions/q{NN}/question.json` and ro
   - `preamble`: `present: bool`, `asset_path`, `dimensions`, and `slices`.
   - `parts`: array of parts with `part_id`, `label`, `marks`, `isolated_asset_path`, `dimensions`, and `context_dependencies: ["preamble"]` when preamble is present.
   - `composite`: `asset_path: "full.png"` and dimensions.
+  - `taxonomy`: valid `topics` referencing official codes from `data/syllabus/<syllabus>.json` (e.g., `["1.1"]`, `["1.7"]`).
 - Ensure `<output_dir>/manifest.json` contains a valid `question_index` linking every Question Package (`package_path: "questions/q{NN}/question.json"`).
 
 ### 6. Autonomous Repair Loop

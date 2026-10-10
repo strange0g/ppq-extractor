@@ -34,6 +34,8 @@ Specifically:
 - Use **Full-Width Crop** (width 0 to 1000 normalized), never "tight box" or "arbitrary crop".
 - Use **Answer Workspace**, never "dead zone" or "blank area".
 - Use **Processing Queue** (`.pipeline/queue.json`), never "job table" or "database queue".
+- Use **Syllabus Topic Code** (e.g. `1.1`, `1.7`), never "chapter tag" or "math unit".
+- Use **Margin Trimming**, never "edge crop" or "side clipping".
 
 ---
 

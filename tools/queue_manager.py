@@ -468,6 +468,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
     )
 
+    # Subcommand: summary (or status)
+    summary_parser = subparsers.add_parser(
+        "summary", aliases=["status"], help="Print concise summary table of queue status"
+    )
+    summary_parser.add_argument(
+        "--queue-file",
+        default=".pipeline/queue.json",
+        help="Queue ledger JSON path (default: .pipeline/queue.json)",
+    )
+
     args = parser.parse_args(argv)
 
     if args.subcommand == "scan":
@@ -533,6 +543,21 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(json.dumps(queue_data, indent=2))
             return 0
+
+    elif args.subcommand in ("summary", "status"):
+        queue_file = Path(args.queue_file)
+        if not queue_file.is_file():
+            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
+            return 1
+        queue_data = load_queue(args.queue_file)
+        summary = queue_data.get("summary", {})
+        print("=== Processing Queue Status Summary ===")
+        print(f"Total Papers  : {summary.get('total', 0)}")
+        print(f"Unprocessed   : {summary.get('unprocessed', 0)}")
+        print(f"Extracted     : {summary.get('extracted', 0)}")
+        print(f"Verified      : {summary.get('verified', 0)}")
+        print(f"Needs Rework  : {summary.get('needs_rework', 0)}")
+        return 0
 
     return 0
 

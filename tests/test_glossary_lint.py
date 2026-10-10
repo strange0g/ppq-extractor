@@ -25,6 +25,10 @@ PROHIBITED_PATTERNS = [
     (r"\btight box\b", "Prohibited term 'tight box'", "Full-Width Crop"),
     (r"\bdead zone\b", "Prohibited term 'dead zone'", "Answer Workspace"),
     (r"\bjob table\b", "Prohibited term 'job table'", "Processing Queue"),
+    (r"\bchapter tag\b", "Prohibited term 'chapter tag'", "Syllabus Topic Code"),
+    (r"\bmath unit\b", "Prohibited term 'math unit'", "Syllabus Topic Code"),
+    (r"\bedge crop\b", "Prohibited term 'edge crop'", "Margin Trimming"),
+    (r"\bside clipping\b", "Prohibited term 'side clipping'", "Margin Trimming"),
 ]
 
 

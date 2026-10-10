@@ -55,3 +55,12 @@ _Avoid_: Tight box, arbitrary crop
 **Answer Workspace**:
 The blank, dotted, or lined space reserved on an exam paper for candidate handwriting, which must be excised during extraction.
 _Avoid_: Blank space, write area, dead zone
+
+**Syllabus Topic Code**:
+The official two-level hierarchical dot notation identifier (e.g., `1.1` for Quadratics, `1.7` for Differentiation) defined in the syllabus registry (`data/syllabus/<syllabus>.json`) linking Question Packages to curriculum topics.
+_Avoid_: Chapter tag, subject category, math unit
+
+**Margin Trimming**:
+The automatic horizontal suppression of outer margin artifacts (such as vertical "DO NOT WRITE IN THIS MARGIN" warnings) during full-width image cropping without clipping mathematical content.
+_Avoid_: Edge crop, side clipping, arbitrary margin cut
+

@@ -48,9 +48,10 @@ As the direct multimodal LLM agent (without inner LLM API loops):
   - **Excise Answer Workspaces**: Dotted, dashed, or ruled lines reserved for candidate handwriting must NEVER be included in slices. Stop `ymax` immediately where question content ends.
   - **Isolate Stem Preambles**: Introductory stem context, formulas, and diagrams preceding part (a) must be categorized as `preamble` with marks 0. Do NOT combine the preamble into part (a).
   - **Capture Question Parts & Marks**: Capture each question part (`a`, `b`, `i`, etc.) with its corresponding right-margin mark tag.
+  - **Syllabus Topic Classification**: Attribute official Cambridge Syllabus Topic Codes from `data/syllabus/<syllabus>.json` (e.g. `["1.1"]` for Quadratics, `["1.6"]` for Series) to each question and question part.
 
 ### 4. Manifest Assembly & Question Package Generation
-Assemble the per-paper `<output_dir>/manifest.json` cataloging questions, preamble slices, part slices, and question metadata.
+Assemble the per-paper `<output_dir>/manifest.json` cataloging questions, preamble slices, part slices, and question metadata (including topic classifications).
 
 Execute the deterministic cropping tool to generate modular Question Packages:
 ```bash

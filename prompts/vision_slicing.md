@@ -44,7 +44,14 @@ Analyze this page image and identify all question components, their question par
    - For questions that do not contain divided question parts (e.g., a single unpartitioned question carrying all marks), classify the slice as `"kind": "whole"` with `"part_label": null`.
    - Standalone questions carry the total question marks directly on the slice.
 
-7. **Blank & Additional Pages**:
+7. **Multi-Slice Parts & Mid-Question Sub-Preambles**:
+   - When a question part spans across pages or includes introductory stem context immediately preceding that specific part (e.g., `"The function g is defined by ... for x <= 0"` appearing before part `(c)` across a page break), enclose the introductory context within that part's vertical boundary or list its sequential slices.
+
+8. **Syllabus Topic Classification**:
+   - Classify each question item with its official Cambridge Syllabus Topic Code from `data/syllabus/<syllabus>.json` (e.g., for syllabus 9709 P1: `"1.1"` for Quadratics, `"1.2"` for Functions, `"1.3"` for Coordinate geometry, `"1.4"` for Circular measure, `"1.5"` for Trigonometry, `"1.6"` for Series, `"1.7"` for Differentiation, `"1.8"` for Integration).
+   - Assign topic codes on the slice as an array: `"topics": ["1.1"]`.
+
+9. **Blank & Additional Pages**:
    - If the page contains no question items (such as a "BLANK PAGE" or "Additional Page: If you use the following lined page..."), return `"page_has_questions": false` with an empty `"items": []` list.
 
 ---
@@ -62,27 +69,31 @@ Return ONLY a valid JSON object matching this schema:
       "kind": "whole",
       "part_label": null,
       "box_1000": [120, 0, 310, 1000],
-      "marks": 5
+      "marks": 5,
+      "topics": ["1.6"]
     },
     {
       "question_number": 2,
       "kind": "preamble",
       "box_1000": [330, 0, 480, 1000],
-      "marks": 0
+      "marks": 0,
+      "topics": ["1.2"]
     },
     {
       "question_number": 2,
       "kind": "part",
       "part_label": "a",
       "box_1000": [480, 0, 610, 1000],
-      "marks": 3
+      "marks": 3,
+      "topics": ["1.2"]
     },
     {
       "question_number": 2,
       "kind": "part",
       "part_label": "b",
       "box_1000": [610, 0, 850, 1000],
-      "marks": 4
+      "marks": 4,
+      "topics": ["1.2"]
     }
   ]
 }

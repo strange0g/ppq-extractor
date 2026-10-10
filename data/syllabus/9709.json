@@ -1,0 +1,208 @@
+{
+  "": "https://json-schema.org/draft/2020-12/schema",
+  "syllabus": "9709",
+  "title": "Cambridge International AS & A Level Mathematics",
+  "valid_years": "2023-2025",
+  "components": {
+    "1": {
+      "name": "Pure Mathematics 1",
+      "code": "P1",
+      "standard_marks": 75,
+      "duration_minutes": 110,
+      "topics": [
+        {
+          "code": "1.1",
+          "title": "Quadratics"
+        },
+        {
+          "code": "1.2",
+          "title": "Functions"
+        },
+        {
+          "code": "1.3",
+          "title": "Coordinate geometry"
+        },
+        {
+          "code": "1.4",
+          "title": "Circular measure"
+        },
+        {
+          "code": "1.5",
+          "title": "Trigonometry"
+        },
+        {
+          "code": "1.6",
+          "title": "Series"
+        },
+        {
+          "code": "1.7",
+          "title": "Differentiation"
+        },
+        {
+          "code": "1.8",
+          "title": "Integration"
+        }
+      ]
+    },
+    "2": {
+      "name": "Pure Mathematics 2",
+      "code": "P2",
+      "standard_marks": 50,
+      "duration_minutes": 75,
+      "topics": [
+        {
+          "code": "2.1",
+          "title": "Algebra"
+        },
+        {
+          "code": "2.2",
+          "title": "Logarithmic and exponential functions"
+        },
+        {
+          "code": "2.3",
+          "title": "Trigonometry"
+        },
+        {
+          "code": "2.4",
+          "title": "Differentiation"
+        },
+        {
+          "code": "2.5",
+          "title": "Integration"
+        },
+        {
+          "code": "2.6",
+          "title": "Numerical solution of equations"
+        }
+      ]
+    },
+    "3": {
+      "name": "Pure Mathematics 3",
+      "code": "P3",
+      "standard_marks": 75,
+      "duration_minutes": 110,
+      "topics": [
+        {
+          "code": "3.1",
+          "title": "Algebra"
+        },
+        {
+          "code": "3.2",
+          "title": "Logarithmic and exponential functions"
+        },
+        {
+          "code": "3.3",
+          "title": "Trigonometry"
+        },
+        {
+          "code": "3.4",
+          "title": "Differentiation"
+        },
+        {
+          "code": "3.5",
+          "title": "Integration"
+        },
+        {
+          "code": "3.6",
+          "title": "Numerical solution of equations"
+        },
+        {
+          "code": "3.7",
+          "title": "Vectors"
+        },
+        {
+          "code": "3.8",
+          "title": "Differential equations"
+        },
+        {
+          "code": "3.9",
+          "title": "Complex numbers"
+        }
+      ]
+    },
+    "4": {
+      "name": "Mechanics",
+      "code": "M1",
+      "standard_marks": 50,
+      "duration_minutes": 75,
+      "topics": [
+        {
+          "code": "4.1",
+          "title": "Forces and equilibrium"
+        },
+        {
+          "code": "4.2",
+          "title": "Kinematics of motion in a straight line"
+        },
+        {
+          "code": "4.3",
+          "title": "Momentum"
+        },
+        {
+          "code": "4.4",
+          "title": "Newton\u2019s laws of motion"
+        },
+        {
+          "code": "4.5",
+          "title": "Energy, work and power"
+        }
+      ]
+    },
+    "5": {
+      "name": "Probability & Statistics 1",
+      "code": "S1",
+      "standard_marks": 50,
+      "duration_minutes": 75,
+      "topics": [
+        {
+          "code": "5.1",
+          "title": "Representation of data"
+        },
+        {
+          "code": "5.2",
+          "title": "Permutations and combinations"
+        },
+        {
+          "code": "5.3",
+          "title": "Probability"
+        },
+        {
+          "code": "5.4",
+          "title": "Discrete random variables"
+        },
+        {
+          "code": "5.5",
+          "title": "The normal distribution"
+        }
+      ]
+    },
+    "6": {
+      "name": "Probability & Statistics 2",
+      "code": "S2",
+      "standard_marks": 50,
+      "duration_minutes": 75,
+      "topics": [
+        {
+          "code": "6.1",
+          "title": "The Poisson distribution"
+        },
+        {
+          "code": "6.2",
+          "title": "Linear combinations of random variables"
+        },
+        {
+          "code": "6.3",
+          "title": "Continuous random variables"
+        },
+        {
+          "code": "6.4",
+          "title": "Sampling and estimation"
+        },
+        {
+          "code": "6.5",
+          "title": "Hypothesis tests"
+        }
+      ]
+    }
+  }
+}

@@ -28,6 +28,7 @@
           "xmax": 1000
         }
       ],
+      "topics": [],
       "context_dependencies": []
     }
   ],
@@ -39,7 +40,9 @@
     }
   },
   "taxonomy": {
-    "topics": [],
+    "topics": [
+      "1.6"
+    ],
     "has_diagram": false
   }
 }

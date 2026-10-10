@@ -382,22 +382,76 @@ class TestCropSlices(unittest.TestCase):
         self.assertEqual(len(updated["question_index"]), 1)
         idx_entry = updated["question_index"][0]
         self.assertEqual(idx_entry["question_number"], 1)
-        self.assertEqual(idx_entry["package_path"], "questions/q01/question.json")
+        self.assertEqual(idx_entry["package_path"], "questions/q01")
         self.assertEqual(idx_entry["total_marks"], 3)
         self.assertEqual(idx_entry["composite_asset"], "questions/q01/full.png")
 
-        # Verify atomic question.json file
+        # Verify Question Package contains only clean image assets (no question.json by default)
+        q_json_path = self.crops_dir / "questions" / "q01" / "question.json"
+        self.assertFalse(
+            q_json_path.exists(),
+            f"question.json should not exist by default at {q_json_path}",
+        )
+        q_pkg_files = sorted(
+            f.name for f in (self.crops_dir / "questions" / "q01").iterdir()
+        )
+        self.assertEqual(q_pkg_files, ["full.png", "part_a.png", "preamble.png"])
+
+    def test_emit_question_json_preserves_legacy_descriptor(self):
+        """Test optional emit_question_json preserves legacy question.json generation."""
+        manifest_data = {
+            "id": "test_paper_legacy",
+            "questions": [
+                {
+                    "number": 1,
+                    "has_preamble": True,
+                    "preamble_slice": {
+                        "page": 1,
+                        "ymin": 100,
+                        "xmin": 0,
+                        "ymax": 200,
+                        "xmax": 1000,
+                    },
+                    "parts": [
+                        {
+                            "label": "a",
+                            "marks": 3,
+                            "slices": [
+                                {
+                                    "page": 1,
+                                    "ymin": 300,
+                                    "xmin": 0,
+                                    "ymax": 400,
+                                    "xmax": 1000,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        manifest_file = self.root / "manifest_legacy.json"
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
+
+        crop_and_stitch(
+            manifest_file,
+            self.pages_dir,
+            self.crops_dir,
+            pad=10,
+            spacing=20,
+            emit_question_json=True,
+        )
+
         q_json_path = self.crops_dir / "questions" / "q01" / "question.json"
         self.assertTrue(
             q_json_path.is_file(), f"question.json not found at {q_json_path}"
         )
         q_data = json.loads(q_json_path.read_text())
 
-        self.assertEqual(q_data["id"], "test_paper_04_q01")
-        self.assertEqual(q_data["paper_id"], "test_paper_04")
+        self.assertEqual(q_data["id"], "test_paper_legacy_q01")
+        self.assertEqual(q_data["paper_id"], "test_paper_legacy")
         self.assertEqual(q_data["question_number"], 1)
         self.assertEqual(q_data["total_marks"], 3)
-
         self.assertTrue(q_data["preamble"]["present"])
         self.assertEqual(q_data["preamble"]["asset_path"], "preamble.png")
         self.assertEqual(q_data["preamble"]["dimensions"]["width"], 1000)
@@ -467,6 +521,18 @@ class TestCropSlices(unittest.TestCase):
         self.assertIn("crops_count", output)
         self.assertTrue((self.crops_dir / "questions" / "q01" / "part_a.png").is_file())
         self.assertTrue((self.crops_dir / "questions" / "q01" / "full.png").is_file())
+        self.assertFalse(
+            (self.crops_dir / "questions" / "q01" / "question.json").exists()
+        )
+
+        # Test CLI execution with --emit-question-json flag
+        cmd_legacy = cmd + ["--emit-question-json"]
+        proc_legacy = subprocess.run(cmd_legacy, capture_output=True, text=True)
+        self.assertEqual(
+            proc_legacy.returncode,
+            0,
+            f"CLI with --emit-question-json failed: {proc_legacy.stderr}",
+        )
         self.assertTrue(
             (self.crops_dir / "questions" / "q01" / "question.json").is_file()
         )
@@ -575,24 +641,20 @@ class TestCropSlices(unittest.TestCase):
         self.assertTrue((q1_dir / "part_a.png").is_file())
         self.assertTrue((q1_dir / "part_b.png").is_file())
         self.assertTrue((q1_dir / "full.png").is_file())
-        self.assertTrue((q1_dir / "question.json").is_file())
+        self.assertFalse((q1_dir / "question.json").exists())
 
         # Verify Q2 assets
         q2_dir = self.crops_dir / "questions" / "q02"
         self.assertFalse((q2_dir / "preamble.png").exists())
         self.assertTrue((q2_dir / "part_a.png").is_file())
         self.assertTrue((q2_dir / "full.png").is_file())
-        self.assertTrue((q2_dir / "question.json").is_file())
+        self.assertFalse((q2_dir / "question.json").exists())
 
         # Check updated manifest
         updated = json.loads(manifest_file.read_text())
         self.assertEqual(len(updated["question_index"]), 2)
-        self.assertEqual(
-            updated["question_index"][0]["package_path"], "questions/q01/question.json"
-        )
-        self.assertEqual(
-            updated["question_index"][1]["package_path"], "questions/q02/question.json"
-        )
+        self.assertEqual(updated["question_index"][0]["package_path"], "questions/q01")
+        self.assertEqual(updated["question_index"][1]["package_path"], "questions/q02")
 
     def test_multi_slice_preamble_and_standalone_whole_question(self):
         """Test handling of multi-slice preambles and standalone whole questions."""
@@ -630,17 +692,17 @@ class TestCropSlices(unittest.TestCase):
         )
         self.assertEqual(result["status"], "success")
 
-        # Q1 has preamble.png, part_a.png, full.png, question.json
+        # Q1 has preamble.png, part_a.png, full.png (no question.json)
         q1_dir = self.crops_dir / "questions" / "q01"
         self.assertTrue((q1_dir / "preamble.png").is_file())
         self.assertTrue((q1_dir / "part_a.png").is_file())
         self.assertTrue((q1_dir / "full.png").is_file())
-        self.assertTrue((q1_dir / "question.json").is_file())
+        self.assertFalse((q1_dir / "question.json").exists())
 
-        # Q2 has standalone whole question: full.png and question.json without redundant part.png
+        # Q2 has standalone whole question: full.png without redundant part.png or question.json
         q2_dir = self.crops_dir / "questions" / "q02"
         self.assertTrue((q2_dir / "full.png").is_file())
-        self.assertTrue((q2_dir / "question.json").is_file())
+        self.assertFalse((q2_dir / "question.json").exists())
         self.assertFalse((q2_dir / "part.png").exists())
         self.assertFalse((q2_dir / "preamble.png").exists())
 
@@ -688,7 +750,9 @@ class TestCropSlices(unittest.TestCase):
         manifest_file = self.root / "manifest_empty.json"
         manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
+        crop_and_stitch(
+            manifest_file, self.pages_dir, self.crops_dir, emit_question_json=True
+        )
 
         q1_json = self.crops_dir / "questions" / "q01" / "question.json"
         self.assertTrue(q1_json.is_file())
@@ -745,8 +809,8 @@ class TestCropSlices(unittest.TestCase):
         self.assertEqual(updated["verification"]["extracted_marks"], 5)
         self.assertTrue(updated["verification"]["balance_check"])
 
-    def test_autonomous_crop_repair_from_question_json(self):
-        """Test autonomous crop repair loads edited coordinates from question.json."""
+    def test_manifest_sole_authority_during_verifier_repair(self):
+        """Test manifest.json remains the sole file-based authority during cropping and verifier repair."""
         manifest_data = {
             "paper_id": "test_repair",
             "questions": [
@@ -776,29 +840,42 @@ class TestCropSlices(unittest.TestCase):
 
         # Initial crop run
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
-        q1_json_file = self.crops_dir / "questions" / "q01" / "question.json"
-        self.assertTrue(q1_json_file.is_file())
+        q1_dir = self.crops_dir / "questions" / "q01"
+        self.assertFalse((q1_dir / "question.json").exists())
 
-        with Image.open(
-            self.crops_dir / "questions" / "q01" / "part_a.png"
-        ) as part_img_initial:
+        with Image.open(q1_dir / "part_a.png") as part_img_initial:
             initial_height = part_img_initial.height
 
-        # Simulate Verifier applying upward safety buffer directly in question.json
-        q1_data = json.loads(q1_json_file.read_text())
-        q1_data["parts"][0]["slices"][0]["ymin"] = 200  # Expand from 300 to 200
-        q1_json_file.write_text(json.dumps(q1_data, indent=2))
+        # Simulate Verifier repairing coordinates directly in manifest.json (applying safety buffer)
+        manifest_data["questions"][0]["parts"][0]["slices"][0]["ymin"] = (
+            200  # Expand from 300 to 200
+        )
+        manifest_file.write_text(json.dumps(manifest_data, indent=2))
 
-        # Re-run cropping tool (autonomous repair)
+        # Simulate legacy/stale question.json on disk with conflicting coordinates
+        stale_q_data = {
+            "parts": [
+                {
+                    "slices": [
+                        {"page": 1, "ymin": 350, "xmin": 0, "ymax": 400, "xmax": 1000}
+                    ]
+                }
+            ]
+        }
+        stale_json = q1_dir / "question.json"
+        stale_json.write_text(json.dumps(stale_q_data, indent=2))
+
+        # Re-run cropping tool: manifest.json is sole authority, stale question.json must NOT override it
         crop_and_stitch(manifest_file, self.pages_dir, self.crops_dir)
 
-        # Verify new crop used coordinates from question.json
-        with Image.open(
-            self.crops_dir / "questions" / "q01" / "part_a.png"
-        ) as part_img_repaired:
+        # Verify new crop used coordinates from manifest.json (ymin: 200)
+        with Image.open(q1_dir / "part_a.png") as part_img_repaired:
             self.assertGreater(part_img_repaired.height, initial_height)
 
-        # Verify updated manifest in sync with question.json coordinates
+        # Verify stale question.json was removed by default
+        self.assertFalse(stale_json.exists())
+
+        # Verify updated manifest maintains repaired coordinates
         updated_manifest = json.loads(manifest_file.read_text())
         repaired_slice = updated_manifest["questions"][0]["parts"][0]["slices"][0]
         self.assertEqual(repaired_slice["ymin"], 200)

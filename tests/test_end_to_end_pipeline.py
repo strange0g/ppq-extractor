@@ -6,12 +6,11 @@ Validates the full autonomous pipeline against Cambridge 9709 Question Paper (97
 3. High-speed PDF rendering into 200 DPI PNG page images (page_01.png to page_20.png).
 4. Manifest assembly with 0-1000 vertical bounding coordinates for all 10 questions and parts.
 5. Slicing and Question Package generation creating standalone Question Preamble Images (preamble.png),
-   isolated Question Part Images (part_{label}.png), Composite Question Images (full.png),
-   and atomic metadata descriptors (question.json) under questions/q{NN}/ with uniform full width (W)
-   and answer workspace lines excised.
+   isolated Question Part Images (part_{label}.png), and Composite Question Images (full.png)
+   under questions/q{NN}/ with uniform full width (W) and answer workspace lines excised.
 6. Validation that Question 1 top bound encompasses the numeral "1" (ymin coordinate and visual headroom margin).
 7. Validation that Question 10 has cleanly decoupled preamble.png, isolated part_a.png, part_b.png, part_c.png, and composite full.png.
-8. Validation of all 10 Question Packages metadata schemas (question.json) and paper manifest.json indexing.
+8. Validation of all 10 Question Packages containing purely media assets (without question.json) and paper manifest.json indexing.
 9. Mathematical mark-sum invariant verification (75/75 marks).
 10. Verifier audit checks and queue status transition to 'verified'.
 """
@@ -678,7 +677,10 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertTrue(q10_part_b_path.is_file(), "Question 10 part_b.png missing")
         self.assertTrue(q10_part_c_path.is_file(), "Question 10 part_c.png missing")
         self.assertTrue(q10_full_path.is_file(), "Question 10 full.png missing")
-        self.assertTrue(q10_json_path.is_file(), "Question 10 question.json missing")
+        self.assertFalse(
+            q10_json_path.exists(),
+            "Question Packages must contain purely image assets without question.json by default",
+        )
 
         with (
             Image.open(q10_preamble_path) as im_p10,
@@ -716,14 +718,12 @@ class TestEndToEndPipeline(unittest.TestCase):
                 "Composite full.png must stitch preamble and all parts",
             )
 
-        # Validate Question 10 question.json descriptor
-        q10_meta = json.loads(q10_json_path.read_text(encoding="utf-8"))
-        self.assertEqual(q10_meta["id"], "9709_w24_qp_12_q10")
-        self.assertEqual(q10_meta["paper_id"], "9709_w24_qp_12")
-        self.assertEqual(q10_meta["question_number"], 10)
-        self.assertEqual(q10_meta["total_marks"], 10)
-        self.assertTrue(q10_meta["preamble"]["present"])
-        self.assertEqual(q10_meta["preamble"]["asset_path"], "preamble.png")
+        # Validate Question 10 metadata from manifest.json authority
+        updated_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        q10_meta = updated_manifest["questions"][9]
+        self.assertEqual(q10_meta["number"], 10)
+        self.assertEqual(q10_meta["total_question_marks"], 10)
+        self.assertTrue(q10_meta["has_preamble"])
         self.assertEqual(len(q10_meta["parts"]), 3)
 
         expected_q10_parts = [
@@ -736,17 +736,15 @@ class TestEndToEndPipeline(unittest.TestCase):
         ):
             self.assertEqual(part_meta["label"], exp_label)
             self.assertEqual(part_meta["marks"], exp_marks)
-            self.assertEqual(part_meta["isolated_asset_path"], exp_asset)
-            self.assertEqual(part_meta["context_dependencies"], ["preamble"])
-            self.assertEqual(part_meta["dimensions"]["width"], 1654)
+            self.assertIn(exp_asset, part_meta["asset_path"])
+            self.assertEqual(part_meta["width"], 1654)
 
-        self.assertEqual(q10_meta["composite"]["asset_path"], "full.png")
-        self.assertEqual(q10_meta["composite"]["dimensions"]["width"], 1654)
+        self.assertIn("full.png", q10_meta["composite_asset_path"])
+        self.assertEqual(q10_meta["composite_width"], 1654)
 
         # -------------------------------------------------------------
         # Step 7: Validate all 10 Question Packages & manifest index
         # -------------------------------------------------------------
-        updated_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         self.assertIn("question_index", updated_manifest)
         self.assertEqual(len(updated_manifest["question_index"]), 10)
 
@@ -757,96 +755,42 @@ class TestEndToEndPipeline(unittest.TestCase):
             )
 
             q_json_file = q_pkg_dir / "question.json"
-            self.assertTrue(
-                q_json_file.is_file(), f"Missing question.json for q{q_num:02d}"
+            self.assertFalse(
+                q_json_file.exists(),
+                f"Question Package for q{q_num:02d} must not contain question.json by default",
             )
 
-            q_meta = json.loads(q_json_file.read_text(encoding="utf-8"))
-
-            # Top-level item descriptors
-            self.assertEqual(q_meta["id"], f"9709_w24_qp_12_q{q_num:02d}")
-            self.assertEqual(q_meta["paper_id"], "9709_w24_qp_12")
-            self.assertEqual(q_meta["question_number"], q_num)
-            self.assertIsInstance(q_meta["total_marks"], int)
-            self.assertGreater(q_meta["total_marks"], 0)
-
-            # Preamble descriptor
-            self.assertIn("preamble", q_meta)
-            self.assertIsInstance(q_meta["preamble"]["present"], bool)
-            if q_meta["preamble"]["present"]:
-                self.assertEqual(q_meta["preamble"]["asset_path"], "preamble.png")
-                self.assertTrue((q_pkg_dir / "preamble.png").is_file())
-                self.assertEqual(q_meta["preamble"]["dimensions"]["width"], 1654)
-            else:
-                self.assertIsNone(q_meta["preamble"]["asset_path"])
-                self.assertFalse((q_pkg_dir / "preamble.png").exists())
-
-            # Parts descriptors
-            self.assertIn("parts", q_meta)
-            self.assertGreaterEqual(len(q_meta["parts"]), 1)
-            parts_marks_sum = 0
-            for part in q_meta["parts"]:
-                self.assertIn("part_id", part)
-                self.assertIn("label", part)
-                self.assertIn("marks", part)
-                parts_marks_sum += part["marks"]
-                self.assertIn("isolated_asset_path", part)
-                part_asset_file = q_pkg_dir / part["isolated_asset_path"]
+            # Ensure question package contains purely image assets
+            for pkg_file in q_pkg_dir.iterdir():
                 self.assertTrue(
-                    part_asset_file.is_file(),
-                    f"Missing part asset {part['isolated_asset_path']} in q{q_num:02d}",
+                    pkg_file.name.endswith(".png"),
+                    f"Unexpected non-image file {pkg_file.name} in q{q_num:02d}",
                 )
-                self.assertEqual(part["dimensions"]["width"], 1654)
-                self.assertIn("context_dependencies", part)
-                if q_meta["preamble"]["present"]:
-                    self.assertEqual(part["context_dependencies"], ["preamble"])
-                else:
-                    self.assertEqual(part["context_dependencies"], [])
 
-            self.assertEqual(
-                parts_marks_sum,
-                q_meta["total_marks"],
-                f"Sum of parts marks in q{q_num:02d} must equal total_marks",
-            )
-
-            # Composite descriptor
-            self.assertIn("composite", q_meta)
-            self.assertEqual(q_meta["composite"]["asset_path"], "full.png")
-            comp_asset_file = q_pkg_dir / "full.png"
-            self.assertTrue(
-                comp_asset_file.is_file(), f"Missing full.png in q{q_num:02d}"
-            )
-            self.assertEqual(q_meta["composite"]["dimensions"]["width"], 1654)
-
-            # Taxonomy descriptor
-            self.assertIn("taxonomy", q_meta)
-            self.assertIn("topics", q_meta["taxonomy"])
-            self.assertIn("has_diagram", q_meta["taxonomy"])
+            q_meta = updated_manifest["questions"][q_num - 1]
+            self.assertEqual(q_meta["number"], q_num)
 
             # Manifest question_index verification
             idx_entry = updated_manifest["question_index"][q_num - 1]
             self.assertEqual(idx_entry["question_number"], q_num)
             self.assertEqual(
                 idx_entry["package_path"],
-                f"questions/q{q_num:02d}/question.json",
+                f"questions/q{q_num:02d}",
             )
-            self.assertEqual(idx_entry["total_marks"], q_meta["total_marks"])
+            self.assertGreater(idx_entry["total_marks"], 0)
             self.assertEqual(
                 idx_entry["composite_asset"],
                 f"questions/q{q_num:02d}/full.png",
             )
-            # Verify file paths resolved from output_dir root exist
-            self.assertTrue((output_dir / idx_entry["package_path"]).is_file())
+            # Verify paths resolved from output_dir root exist
+            self.assertTrue((output_dir / idx_entry["package_path"]).is_dir())
             self.assertTrue((output_dir / idx_entry["composite_asset"]).is_file())
 
         # -------------------------------------------------------------
         # Step 8: Mathematical mark-sum invariant audit & queue update
         # -------------------------------------------------------------
         total_extracted_marks = sum(
-            json.loads((questions_dir / f"q{i:02d}" / "question.json").read_text())[
-                "total_marks"
-            ]
-            for i in range(1, 11)
+            item["total_marks"] for item in updated_manifest["question_index"]
         )
         self.assertEqual(total_extracted_marks, 75)
         self.assertEqual(total_extracted_marks, claimed_paper["expected_marks"])

@@ -15,6 +15,7 @@ from tools.db.migrations import (
     seed_syllabus_topics,
     set_schema_version,
 )
+from tools.db.sync import sync_manifest_to_db
 
 __all__ = [
     "get_connection",
@@ -24,6 +25,7 @@ __all__ = [
     "get_schema_version",
     "set_schema_version",
     "seed_syllabus_topics",
+    "sync_manifest_to_db",
     "Migration",
     "MIGRATIONS",
 ]

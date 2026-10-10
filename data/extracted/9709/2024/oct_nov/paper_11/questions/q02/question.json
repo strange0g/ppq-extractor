@@ -28,7 +28,9 @@
           "xmax": 1000
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.5"
+      ],
       "context_dependencies": []
     }
   ],

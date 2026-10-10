@@ -537,7 +537,8 @@ def crop_and_stitch(
             # Part metadata for question.json
             part_marks = part.get("marks")
             part_context_deps = ["preamble"] if preamble_meta["present"] else []
-            part_topics = part.get("topics") or []
+            # For standalone questions without subdivided parts, inherit question-level topics directly
+            part_topics = part.get("topics") or (q.get("topics") if len(parts) == 1 else []) or []
 
             question_parts_meta.append({
                 "part_id": part_identifier,

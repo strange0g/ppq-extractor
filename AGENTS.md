@@ -1,70 +1,105 @@
-## Pipeline Roles
+# Agent Operating System & Governance
 
-The PPQ Extractor pipeline runs autonomously with two decoupled agent roles operating in scheduled hourly containers (without nested LLM loops):
-
-### Extractor Agent
-- Responsible for converting an unworked Question Paper into rendered page images.
-- Invokes multimodal vision capabilities on content pages using [`prompts/vision_slicing.md`](file:///home/raied/Programming/ppq-extractor/prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
-- Enforces the question number invariant: `ymin` must strictly encompass top-level question numerals (e.g., bold "1", "2") with an upward safety buffer of at least 15 normalized units (~15px) so question numbers are never clipped or excised.
-- Excises dotted, lined, or dashed answer workspace lines.
-- Assembles per-paper `manifest.json` and invokes [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) to generate modular Question Packages (`questions/q{NN}/`) containing standalone Question Preamble Images (`preamble.png`), isolated Question Part Images (`part_{label}.png`), Composite Question Images (`full.png`), and atomic metadata descriptors (`question.json`).
-- Updates queue status to `extracted` with `--extracted-marks` via [`tools.queue_manager`](file:///home/raied/Programming/ppq-extractor/tools/queue_manager.py).
-- Detailed agent system instructions: [`prompts/extractor_agent.md`](file:///home/raied/Programming/ppq-extractor/prompts/extractor_agent.md).
-
-### Verifier Agent
-- Responsible for inspecting Question Packages produced by the Extractor Agent against the source Question Paper pages.
-- Audits mathematical mark-sum invariants against syllabus benchmarks (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Stats).
-- Audits Question Packages for question number visibility (especially Question 1) to verify question numerals were not clipped or excised.
-- Performs page-by-page visual reconciliation to verify sequence completeness and ensure no mathematical symbols, exponents, or mark tags are clipped.
-- Validates the integrity of per-question `question.json` descriptors and the paper-level `manifest.json` index.
-- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs [`tools.crop_slices`](file:///home/raied/Programming/ppq-extractor/tools/crop_slices.py) when minor flaws exist.
-- Approves verified papers or flags unresolvable defects as `needs_rework` via [`tools.queue_manager`](file:///home/raied/Programming/ppq-extractor/tools/queue_manager.py).
-- Detailed agent system instructions: [`prompts/verifier_agent.md`](file:///home/raied/Programming/ppq-extractor/prompts/verifier_agent.md).
+This document governs autonomous agents operating in [`ppq-extractor`](file:///home/raied/Programming/ppq-extractor). It specifies operating rules, domain grounding, pipeline roles, tooling commands, and agent skill integration.
 
 ---
 
-## Domain Grounding
+## Operating Rules & Invariants
 
-All agents must strictly adhere to the domain terminology defined in [`GLOSSARY.md`](file:///home/raied/Programming/ppq-extractor/GLOSSARY.md).
-Specifically:
-- Use **Question Package** (e.g., `questions/q01/` with `question.json`), never "question folder" or "problem bundle".
-- Use **Question Preamble Image** (e.g., `preamble.png`), never "stem crop" or "header snippet".
-- Use **Question Part Image** (e.g., `part_a.png`), never "subpart snippet" or "partial crop".
-- Use **Composite Question Image** (e.g., `full.png`), never "merged image" or "stitched page".
-- Use **Full-Width Crop** (width 0 to 1000 normalized), never "tight box" or "arbitrary crop".
-- Use **Answer Workspace**, never "dead zone" or "blank area".
-- Use **Processing Queue** (`.pipeline/queue.json`), never "job table" or "database queue".
-- Use **Syllabus Topic Code** (e.g. `1.1`, `1.7`), never "chapter tag" or "math unit".
-- Use **Margin Trimming**, never "edge crop" or "side clipping".
+1. **Canonical Tooling (`uv`)**:
+   - Always run Python commands and scripts via `uv run` (e.g. `uv run ppq-queue`, `uv run python -m unittest`).
+   - Never invoke ad-hoc pip commands or global python interpreters directly.
+2. **Quality Guardrails**:
+   - Execute `./scripts/check.sh` before completing any code changes.
+   - All 42 deterministic tests must pass with zero functional regressions.
+3. **Strict Domain Language**:
+   - Adhere strictly to the canonical vocabulary in [`GLOSSARY.md`](GLOSSARY.md).
+   - Use **Question Package** (`questions/q{NN}/`), never "question folder" or "problem bundle".
+   - Use **Question Preamble Image** (`preamble.png`), never "stem crop" or "header snippet".
+   - Use **Question Part Image** (`part_{label}.png`), never "subpart snippet" or "partial crop".
+   - Use **Composite Question Image** (`full.png`), never "merged image" or "stitched page".
+   - Use **Full-Width Crop** (width 0 to 1000 normalized), never "tight box" or "arbitrary crop".
+   - Use **Answer Workspace**, never "dead zone" or "blank area".
+   - Use **Processing Queue** (`.pipeline/queue.json`), never "job table" or "database queue".
+   - Use **Syllabus Topic Code** (e.g. `1.1`, `1.7`), never "chapter tag" or "math unit".
+   - Use **Margin Trimming**, never "edge crop" or "side clipping".
+4. **Question Numeral Invariant**:
+   - When extracting vertical coordinates, `ymin` must strictly encompass top-level question numerals (e.g. bold "1", "2") with an upward safety buffer of at least 15 normalized units (~15px) so question numbers are never clipped or excised.
+5. **No Nested LLM Loops**:
+   - Agents run in scheduled hourly autonomous containers without spawning unmanaged inner LLM API loops.
+
+---
+
+## Documentation Index & Progressive Disclosure
+
+Agents must navigate the repository using context pointers rather than loading unneeded files into context:
+
+- [`README.md`](README.md): System overview, quick start, and directory structure.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): Developer workflow, formatting, and pull request conventions.
+- [`docs/architecture.md`](docs/architecture.md): Deep-dive pipeline lifecycle, two-tier Question Package model, coordinate spaces, and margin trimming.
+- [`docs/development.md`](docs/development.md): CLI reference flags, test suite breakdown, and developer tools.
+- [`GLOSSARY.md`](GLOSSARY.md): Authoritative domain definitions and terminology rules.
+- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming).
+
+---
+
+## Pipeline Roles
+
+The extraction pipeline runs autonomously with two decoupled agent roles:
+
+### Extractor Agent
+- Converts an unworked Question Paper PDF into rendered page images via `ppq-render` / `tools.pdf_to_images`.
+- Invokes multimodal vision capabilities on content pages using [`prompts/vision_slicing.md`](prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
+- Enforces the question number invariant: `ymin` strictly encompasses question numerals with an upward safety buffer of at least 15 normalized units (~15px).
+- Excises dotted, lined, or dashed answer workspace lines.
+- Assembles per-paper `manifest.json` and runs `ppq-crop` / `tools.crop_slices` to generate modular Question Packages (`questions/q{NN}/`) containing standalone Question Preamble Images (`preamble.png`), isolated Question Part Images (`part_{label}.png`), Composite Question Images (`full.png`), and atomic metadata descriptors (`question.json`).
+- Updates queue status to `extracted` with `--extracted-marks` via `ppq-queue` / `tools.queue_manager`.
+- Detailed system instructions: [`prompts/extractor_agent.md`](prompts/extractor_agent.md).
+
+### Verifier Agent
+- Inspects Question Packages produced by the Extractor Agent against source Question Paper pages.
+- Audits mathematical mark-sum invariants against syllabus benchmarks (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Stats).
+- Audits Question Packages for question number visibility (especially Question 1) to verify question numerals were not clipped or excised.
+- Performs page-by-page visual reconciliation to verify sequence completeness and ensure no mathematical symbols, exponents, or mark tags are clipped.
+- Validates the integrity of per-question `question.json` descriptors and paper-level `manifest.json`.
+- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs `tools.crop_slices` when minor flaws exist.
+- Approves verified papers or flags unresolvable defects as `needs_rework` via `tools.queue_manager`.
+- Detailed system instructions: [`prompts/verifier_agent.md`](prompts/verifier_agent.md).
 
 ---
 
 ## CLI Tooling Commands Reference
 
-Agents must use the deterministic CLI tools provided in the repository instead of writing ad-hoc scripts:
+Agents must execute the canonical CLI entry points via `uv run` instead of writing ad-hoc scripts:
 
-1. **Queue Management**:
+1. **Queue Management (`tools.queue_manager`)**:
    ```bash
    # Poll next paper for extractor or verifier
+   uv run ppq-queue next --role {extractor,verifier}
    python3 -m tools.queue_manager next --role {extractor,verifier}
 
    # Show details of a paper in the queue ledger
+   uv run ppq-queue show --id <PAPER_ID>
    python3 -m tools.queue_manager show --id <PAPER_ID>
 
    # Update paper status in the queue ledger
+   uv run ppq-queue update --id <PAPER_ID> --status {extracted,verified,needs_rework} [--notes "<NOTES>"] [--extracted-marks <MARKS>]
    python3 -m tools.queue_manager update --id <PAPER_ID> --status {extracted,verified,needs_rework} [--notes "<NOTES>"] [--extracted-marks <MARKS>]
 
    # Scan directory to discover Question Papers
+   uv run ppq-queue scan --source-dir <DIR>
    python3 -m tools.queue_manager scan --source-dir <DIR>
    ```
 
-2. **High-Speed PDF Rendering**:
+2. **High-Speed PDF Rendering (`tools.pdf_to_images`)**:
    ```bash
+   uv run ppq-render --pdf <SOURCE_PDF> --out-dir <OUTPUT_DIR>/pages --dpi 200
    python3 -m tools.pdf_to_images --pdf <SOURCE_PDF> --out-dir <OUTPUT_DIR>/pages --dpi 200
    ```
 
-3. **Full-Width Cropping & Question Package Generation**:
+3. **Full-Width Cropping & Question Package Generation (`tools.crop_slices`)**:
    ```bash
+   uv run ppq-crop --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
    python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
    ```
    Outputs Question Packages under `<OUTPUT_DIR>/questions/q{NN}/`:

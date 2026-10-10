@@ -294,71 +294,6 @@ def _extract_preamble_slices_from_manifest(q: Dict[str, Any]) -> List[Dict[str, 
     return slice_list
 
 
-def _should_load_from_question_json(
-    q_json_file: Path,
-    manifest_file: Path,
-    manifest_q: Dict[str, Any],
-    existing_q_data: Dict[str, Any],
-) -> bool:
-    """Determine whether to load coordinates from question.json instead of manifest."""
-    has_pkg_slices = bool(
-        (
-            existing_q_data.get("preamble")
-            and existing_q_data.get("preamble", {}).get("slices")
-        )
-        or (
-            existing_q_data.get("parts")
-            and any(p.get("slices") for p in existing_q_data.get("parts", []))
-        )
-    )
-    if not has_pkg_slices:
-        return False
-
-    has_manifest_slices = bool(
-        manifest_q.get("preamble_slices")
-        or manifest_q.get("preamble_slice")
-        or manifest_q.get("slices")
-        or (
-            manifest_q.get("parts")
-            and any(p.get("slices") for p in manifest_q.get("parts", []))
-        )
-    )
-    if not has_manifest_slices:
-        return True
-
-    try:
-        q_mtime = q_json_file.stat().st_mtime
-        m_mtime = manifest_file.stat().st_mtime
-        if q_mtime > m_mtime:
-            return True
-    except OSError:
-        pass
-
-    q_slices = (existing_q_data.get("preamble", {}).get("slices") or []) + [
-        s for p in existing_q_data.get("parts", []) for s in p.get("slices", [])
-    ]
-    m_slices = (
-        (
-            manifest_q.get("preamble_slices")
-            or (
-                [manifest_q["preamble_slice"]]
-                if manifest_q.get("preamble_slice")
-                else []
-            )
-        )
-        + (manifest_q.get("slices") or [])
-        + [s for p in manifest_q.get("parts", []) for s in p.get("slices", [])]
-    )
-    if q_slices != m_slices:
-        try:
-            if q_json_file.stat().st_mtime >= manifest_file.stat().st_mtime - 0.05:
-                return True
-        except OSError:
-            return True
-
-    return False
-
-
 def _resolve_relative_path(target_path: Path, paper_dir: Path, base_dir: Path) -> str:
     """Resolve target path relative to paper directory or base directory cleanly without string slicing."""
     target = target_path.resolve()
@@ -382,6 +317,7 @@ def crop_and_stitch(
     pad: int = 10,
     spacing: int = 20,
     trim_margins: bool = True,
+    emit_question_json: bool = False,
 ) -> Dict[str, Any]:
     """Process question slices from manifest.json and write cropped Question Packages.
 
@@ -389,7 +325,7 @@ def crop_and_stitch(
       - preamble.png (if question has preamble slices)
       - part_{label}.png (isolated Question Part Images without preamble)
       - full.png (composite question image stitching preamble + all parts with 20px padding)
-      - question.json (atomic item-level metadata descriptor)
+      - question.json (legacy metadata descriptor, only when emit_question_json=True)
 
     Updates manifest.json with question_index and package metadata.
 
@@ -400,6 +336,7 @@ def crop_and_stitch(
         pad: Vertical padding in pixels added to each slice (default: 10).
         spacing: White separator divider between stitched parts (default: 20).
         trim_margins: Automatically trim outer margin warning text (default: True).
+        emit_question_json: Emit legacy atomic question.json descriptor per question package (default: False).
 
     Returns:
         Summary dict containing crops metadata and updated manifest.
@@ -431,47 +368,8 @@ def crop_and_stitch(
         q_pkg_dir.mkdir(parents=True, exist_ok=True)
         q_json_file = q_pkg_dir / "question.json"
 
-        # Check if individual question.json already exists and has slices edited (e.g. by Verifier)
-        existing_q_data: Dict[str, Any] | None = None
-        if q_json_file.is_file():
-            try:
-                existing_q_data = json.loads(q_json_file.read_text(encoding="utf-8"))
-            except Exception:
-                existing_q_data = None
-
-        load_from_q_json = False
-        if existing_q_data and isinstance(existing_q_data, dict):
-            load_from_q_json = _should_load_from_question_json(
-                q_json_file=q_json_file,
-                manifest_file=manifest_file,
-                manifest_q=q,
-                existing_q_data=existing_q_data,
-            )
-
-        preamble_slice_list: List[Dict[str, Any]] = []
-        if load_from_q_json and isinstance(existing_q_data.get("preamble"), dict):
-            ext_preamble = existing_q_data["preamble"]
-            if ext_preamble.get("slices"):
-                preamble_slice_list = list(ext_preamble["slices"])
-            elif ext_preamble.get("present") is False:
-                preamble_slice_list = []
-            else:
-                preamble_slice_list = _extract_preamble_slices_from_manifest(q)
-        else:
-            preamble_slice_list = _extract_preamble_slices_from_manifest(q)
-
-        # Sync repaired preamble slices back to manifest if loaded from question.json
-        if load_from_q_json:
-            if preamble_slice_list:
-                q["preamble_slices"] = preamble_slice_list
-                q["has_preamble"] = True
-            elif (
-                existing_q_data
-                and existing_q_data.get("preamble", {}).get("present") is False
-            ):
-                q["has_preamble"] = False
-                q.pop("preamble_slices", None)
-                q.pop("preamble_slice", None)
+        # manifest.json is the sole file-based authority
+        preamble_slice_list = _extract_preamble_slices_from_manifest(q)
 
         preamble_imgs: List[Image.Image] = []
         for p_slice in preamble_slice_list:
@@ -509,22 +407,13 @@ def crop_and_stitch(
         if preamble_imgs:
             composite_slices.extend(preamble_imgs)
 
-        parts: List[Dict[str, Any]] = []
-        if (
-            load_from_q_json
-            and isinstance(existing_q_data.get("parts"), list)
-            and existing_q_data["parts"]
-        ):
-            parts = [dict(p) for p in existing_q_data["parts"]]
-            q["parts"] = parts
-        else:
-            parts = q.get("parts", [])
-            # If parts list is empty, support root question slices or whole question box
-            if not parts:
-                if "slices" in q:
-                    parts = [{"label": "", "slices": q["slices"]}]
-                elif "box_1000" in q or ("ymin" in q and "ymax" in q):
-                    parts = [{"label": "", "slices": [q]}]
+        parts = q.get("parts", [])
+        # If parts list is empty, support root question slices or whole question box
+        if not parts:
+            if "slices" in q:
+                parts = [{"label": "", "slices": q["slices"]}]
+            elif "box_1000" in q or ("ymin" in q and "ymax" in q):
+                parts = [{"label": "", "slices": [q]}]
 
         q_id = f"{paper_id}_q{q_num:02d}" if paper_id else f"q{q_num:02d}"
         question_parts_meta: List[Dict[str, Any]] = []
@@ -661,28 +550,32 @@ def crop_and_stitch(
             )
         )
 
-        # Atomic question.json
-        q_json_file = q_pkg_dir / "question.json"
-        q_json_content = {
-            "id": q_id,
-            "paper_id": paper_id,
-            "question_number": q_num,
-            "total_marks": q_total_marks,
-            "preamble": preamble_meta,
-            "parts": question_parts_meta,
-            "composite": composite_meta,
-            "taxonomy": {
-                "topics": q_topics,
-                "has_diagram": bool(
-                    preamble_meta["present"] or q.get("has_diagram", False)
-                ),
-            },
-        }
-        q_json_file.write_text(json.dumps(q_json_content, indent=2), encoding="utf-8")
+        # Question Package descriptor: deprecated by default, emitted only when explicitly requested
+        if emit_question_json:
+            q_json_content = {
+                "id": q_id,
+                "paper_id": paper_id,
+                "question_number": q_num,
+                "total_marks": q_total_marks,
+                "preamble": preamble_meta,
+                "parts": question_parts_meta,
+                "composite": composite_meta,
+                "taxonomy": {
+                    "topics": q_topics,
+                    "has_diagram": bool(
+                        preamble_meta["present"] or q.get("has_diagram", False)
+                    ),
+                },
+            }
+            q_json_file.write_text(
+                json.dumps(q_json_content, indent=2), encoding="utf-8"
+            )
+        elif q_json_file.is_file():
+            q_json_file.unlink()
 
-        # Manifest index item: spec dictates package_path: "questions/q{NN}/question.json"
+        # Manifest index item: spec dictates package_path referencing question package directory ("questions/q{NN}")
         # and composite_asset: "questions/q{NN}/full.png" relative to paper root
-        rel_pkg_path = _resolve_relative_path(q_json_file, paper_dir, base_out_path)
+        rel_pkg_path = _resolve_relative_path(q_pkg_dir, paper_dir, base_out_path)
 
         question_index.append(
             {
@@ -756,6 +649,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Disable automatic outer margin warning trimming",
     )
+    parser.add_argument(
+        "--emit-question-json",
+        action="store_true",
+        default=False,
+        help="Emit legacy atomic question.json descriptor per question package",
+    )
 
     args = parser.parse_args(argv)
 
@@ -767,6 +666,7 @@ def main(argv: list[str] | None = None) -> None:
             pad=args.pad,
             spacing=args.spacing,
             trim_margins=not args.no_trim_margins,
+            emit_question_json=args.emit_question_json,
         )
         print(json.dumps(summary, indent=2))
     except Exception as exc:

@@ -17,18 +17,26 @@
       "isolated_asset_path": "part_a.png",
       "dimensions": {
         "width": 1654,
-        "height": 162
+        "height": 151
       },
       "slices": [
         {
           "page": 10,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 135,
-          "xmax": 1000
+          "ymax": 130,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            130,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.5"
+      ],
       "context_dependencies": []
     },
     {
@@ -38,18 +46,26 @@
       "isolated_asset_path": "part_b.png",
       "dimensions": {
         "width": 1654,
-        "height": 104
+        "height": 92
       },
       "slices": [
         {
           "page": 11,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 110,
-          "xmax": 1000
+          "ymax": 105,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            105,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.5"
+      ],
       "context_dependencies": []
     }
   ],
@@ -57,7 +73,7 @@
     "asset_path": "full.png",
     "dimensions": {
       "width": 1654,
-      "height": 286
+      "height": 263
     }
   },
   "taxonomy": {

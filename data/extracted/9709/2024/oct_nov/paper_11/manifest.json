@@ -8,6 +8,7 @@
   "status": "extracted",
   "mode": "write_in",
   "total_marks": 75,
+  "expected_marks": 75,
   "extracted_marks_total": 75,
   "pages_processed": [
     2,
@@ -27,6 +28,11 @@
     16,
     17
   ],
+  "verification": {
+    "expected_marks": 75,
+    "extracted_marks": 75,
+    "balance_check": true
+  },
   "questions": [
     {
       "number": 1,
@@ -35,13 +41,22 @@
         {
           "label": "",
           "marks": 4,
+          "topics": [
+            "1.6"
+          ],
           "slices": [
             {
               "page": 2,
               "ymin": 74,
               "xmin": 0,
               "ymax": 135,
-              "xmax": 1000
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                135,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q01/part.png",
@@ -50,12 +65,12 @@
         }
       ],
       "total_question_marks": 4,
-      "composite_asset_path": "questions/q01/full.png",
-      "composite_width": 1654,
-      "composite_height": 162,
       "topics": [
         "1.6"
-      ]
+      ],
+      "composite_asset_path": "questions/q01/full.png",
+      "composite_width": 1654,
+      "composite_height": 162
     },
     {
       "number": 2,
@@ -64,13 +79,22 @@
         {
           "label": "",
           "marks": 4,
+          "topics": [
+            "1.7"
+          ],
           "slices": [
             {
               "page": 3,
               "ymin": 74,
               "xmin": 0,
               "ymax": 130,
-              "xmax": 1000
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                130,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q02/part.png",
@@ -79,41 +103,51 @@
         }
       ],
       "total_question_marks": 4,
+      "topics": [
+        "1.7"
+      ],
       "composite_asset_path": "questions/q02/full.png",
       "composite_width": 1654,
-      "composite_height": 151,
-      "topics": [
-        "1.5"
-      ]
+      "composite_height": 151
     },
     {
       "number": 3,
       "has_preamble": false,
+      "has_diagram": true,
       "parts": [
         {
           "label": "",
           "marks": 5,
+          "topics": [
+            "1.4"
+          ],
           "slices": [
             {
               "page": 4,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 350,
-              "xmax": 1000
+              "ymax": 315,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                315,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q03/part.png",
           "width": 1654,
-          "height": 665
+          "height": 583
         }
       ],
       "total_question_marks": 5,
-      "composite_asset_path": "questions/q03/full.png",
-      "composite_width": 1654,
-      "composite_height": 665,
       "topics": [
         "1.4"
-      ]
+      ],
+      "composite_asset_path": "questions/q03/full.png",
+      "composite_width": 1654,
+      "composite_height": 583
     },
     {
       "number": 4,
@@ -122,13 +156,22 @@
         {
           "label": "",
           "marks": 5,
+          "topics": [
+            "1.1"
+          ],
           "slices": [
             {
               "page": 5,
               "ymin": 74,
               "xmin": 0,
               "ymax": 115,
-              "xmax": 1000
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                115,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q04/part.png",
@@ -137,170 +180,249 @@
         }
       ],
       "total_question_marks": 5,
+      "topics": [
+        "1.1"
+      ],
       "composite_asset_path": "questions/q04/full.png",
       "composite_width": 1654,
-      "composite_height": 115,
-      "topics": [
-        "1.6"
-      ]
+      "composite_height": 115
     },
     {
       "number": 5,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 6,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 109,
-        "xmax": 1000
-      },
+      "preamble_slices": [
+        {
+          "page": 6,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 108,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            108,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 3,
+          "topics": [
+            "1.7"
+          ],
           "slices": [
             {
               "page": 6,
-              "ymin": 110,
+              "ymin": 112,
               "xmin": 0,
-              "ymax": 140,
-              "xmax": 1000
+              "ymax": 138,
+              "xmax": 1000,
+              "box_1000": [
+                112,
+                0,
+                138,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q05/part_a.png",
           "width": 1654,
-          "height": 90
+          "height": 81
         },
         {
           "label": "b",
           "marks": 4,
+          "topics": [
+            "1.8"
+          ],
           "slices": [
             {
               "page": 6,
-              "ymin": 570,
+              "ymin": 578,
               "xmin": 0,
-              "ymax": 605,
-              "xmax": 1000
+              "ymax": 600,
+              "xmax": 1000,
+              "box_1000": [
+                578,
+                0,
+                600,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q05/part_b.png",
           "width": 1654,
-          "height": 102
+          "height": 72
         }
       ],
       "total_question_marks": 7,
-      "composite_asset_path": "questions/q05/full.png",
-      "composite_width": 1654,
-      "composite_height": 333,
       "topics": [
         "1.7",
         "1.8"
-      ]
+      ],
+      "composite_asset_path": "questions/q05/full.png",
+      "composite_width": 1654,
+      "composite_height": 292
     },
     {
       "number": 6,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 7,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 160,
-        "xmax": 1000
-      },
+      "preamble_slices": [
+        {
+          "page": 7,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 155,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            155,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 4,
+          "topics": [
+            "1.3"
+          ],
           "slices": [
             {
               "page": 7,
-              "ymin": 161,
+              "ymin": 165,
               "xmin": 0,
-              "ymax": 190,
-              "xmax": 1000
+              "ymax": 188,
+              "xmax": 1000,
+              "box_1000": [
+                165,
+                0,
+                188,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q06/part_a.png",
           "width": 1654,
-          "height": 88
+          "height": 74
         },
         {
           "label": "b",
           "marks": 3,
+          "topics": [
+            "1.3"
+          ],
           "slices": [
             {
               "page": 7,
-              "ymin": 500,
+              "ymin": 505,
               "xmin": 0,
               "ymax": 560,
-              "xmax": 1000
+              "xmax": 1000,
+              "box_1000": [
+                505,
+                0,
+                560,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q06/part_b.png",
           "width": 1654,
-          "height": 160
+          "height": 148
         }
       ],
       "total_question_marks": 7,
+      "topics": [
+        "1.3"
+      ],
       "composite_asset_path": "questions/q06/full.png",
       "composite_width": 1654,
-      "composite_height": 509,
-      "topics": [
-        "1.1"
-      ]
+      "composite_height": 471
     },
     {
       "number": 7,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 8,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 339,
-        "xmax": 1000
-      },
+      "has_diagram": true,
+      "preamble_slices": [
+        {
+          "page": 8,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 336,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            336,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 4,
+          "topics": [
+            "1.7"
+          ],
           "slices": [
             {
               "page": 8,
-              "ymin": 341,
+              "ymin": 343,
               "xmin": 0,
-              "ymax": 375,
-              "xmax": 1000
+              "ymax": 368,
+              "xmax": 1000,
+              "box_1000": [
+                343,
+                0,
+                368,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q07/part_a.png",
           "width": 1654,
-          "height": 100
+          "height": 78
         },
         {
           "label": "b",
           "marks": 4,
+          "topics": [
+            "1.8"
+          ],
           "slices": [
             {
               "page": 9,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 115,
-              "xmax": 1000
+              "ymax": 105,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                105,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q07/part_b.png",
           "width": 1654,
-          "height": 115
+          "height": 92
         }
       ],
       "total_question_marks": 8,
-      "composite_asset_path": "questions/q07/full.png",
-      "composite_width": 1654,
-      "composite_height": 894,
       "topics": [
         "1.7",
         "1.8"
-      ]
+      ],
+      "composite_asset_path": "questions/q07/full.png",
+      "composite_width": 1654,
+      "composite_height": 842
     },
     {
       "number": 8,
@@ -309,232 +431,347 @@
         {
           "label": "a",
           "marks": 3,
+          "topics": [
+            "1.5"
+          ],
           "slices": [
             {
               "page": 10,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 135,
-              "xmax": 1000
+              "ymax": 130,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                130,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q08/part_a.png",
           "width": 1654,
-          "height": 162
+          "height": 151
         },
         {
           "label": "b",
           "marks": 5,
+          "topics": [
+            "1.5"
+          ],
           "slices": [
             {
               "page": 11,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 110,
-              "xmax": 1000
+              "ymax": 105,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                105,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q08/part_b.png",
           "width": 1654,
-          "height": 104
+          "height": 92
         }
       ],
       "total_question_marks": 8,
-      "composite_asset_path": "questions/q08/full.png",
-      "composite_width": 1654,
-      "composite_height": 286,
       "topics": [
         "1.5"
-      ]
+      ],
+      "composite_asset_path": "questions/q08/full.png",
+      "composite_width": 1654,
+      "composite_height": 263
     },
     {
       "number": 9,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 12,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 102,
-        "xmax": 1000
-      },
+      "preamble_slices": [
+        {
+          "page": 12,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 100,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            100,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 4,
+          "topics": [
+            "1.7"
+          ],
           "slices": [
             {
               "page": 12,
-              "ymin": 104,
+              "ymin": 106,
               "xmin": 0,
-              "ymax": 140,
-              "xmax": 1000
+              "ymax": 135,
+              "xmax": 1000,
+              "box_1000": [
+                106,
+                0,
+                135,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q09/part_a.png",
           "width": 1654,
-          "height": 104
+          "height": 88
         },
         {
           "label": "b",
           "marks": 4,
+          "topics": [
+            "1.7"
+          ],
           "slices": [
             {
               "page": 13,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 135,
-              "xmax": 1000
+              "ymax": 130,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                130,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q09/part_b.png",
           "width": 1654,
-          "height": 162
+          "height": 151
         }
       ],
       "total_question_marks": 8,
-      "composite_asset_path": "questions/q09/full.png",
-      "composite_width": 1654,
-      "composite_height": 391,
       "topics": [
         "1.7"
-      ]
+      ],
+      "composite_asset_path": "questions/q09/full.png",
+      "composite_width": 1654,
+      "composite_height": 359
     },
     {
       "number": 10,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 14,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 129,
-        "xmax": 1000
-      },
+      "preamble_slices": [
+        {
+          "page": 14,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 129,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            129,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 3,
+          "topics": [
+            "1.6"
+          ],
           "slices": [
             {
               "page": 14,
-              "ymin": 131,
+              "ymin": 134,
               "xmin": 0,
-              "ymax": 165,
-              "xmax": 1000
+              "ymax": 163,
+              "xmax": 1000,
+              "box_1000": [
+                134,
+                0,
+                163,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q10/part_a.png",
           "width": 1654,
-          "height": 99
+          "height": 88
         },
         {
           "label": "b",
           "marks": 5,
+          "topics": [
+            "1.6"
+          ],
           "slices": [
             {
               "page": 15,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 150,
-              "xmax": 1000
+              "ymax": 148,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                148,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q10/part_b.png",
           "width": 1654,
-          "height": 197
+          "height": 193
         }
       ],
       "total_question_marks": 8,
-      "composite_asset_path": "questions/q10/full.png",
-      "composite_width": 1654,
-      "composite_height": 484,
       "topics": [
         "1.6"
-      ]
+      ],
+      "composite_asset_path": "questions/q10/full.png",
+      "composite_width": 1654,
+      "composite_height": 469
     },
     {
       "number": 11,
       "has_preamble": true,
-      "preamble_slice": {
-        "page": 16,
-        "ymin": 74,
-        "xmin": 0,
-        "ymax": 100,
-        "xmax": 1000
-      },
+      "preamble_slices": [
+        {
+          "page": 16,
+          "ymin": 74,
+          "xmin": 0,
+          "ymax": 102,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            102,
+            1000
+          ]
+        }
+      ],
       "parts": [
         {
           "label": "a",
           "marks": 3,
+          "topics": [
+            "1.1",
+            "1.2"
+          ],
           "slices": [
             {
               "page": 16,
-              "ymin": 102,
+              "ymin": 107,
               "xmin": 0,
-              "ymax": 150,
-              "xmax": 1000
+              "ymax": 148,
+              "xmax": 1000,
+              "box_1000": [
+                107,
+                0,
+                148,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q11/part_a.png",
           "width": 1654,
-          "height": 132
+          "height": 116
         },
         {
           "label": "b",
           "marks": 2,
+          "topics": [
+            "1.2"
+          ],
           "slices": [
             {
               "page": 16,
-              "ymin": 575,
+              "ymin": 585,
               "xmin": 0,
-              "ymax": 660,
-              "xmax": 1000
+              "ymax": 655,
+              "xmax": 1000,
+              "box_1000": [
+                585,
+                0,
+                655,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q11/part_b.png",
           "width": 1654,
-          "height": 219
+          "height": 184
         },
         {
           "label": "c",
           "marks": 2,
+          "topics": [
+            "1.2"
+          ],
           "slices": [
             {
               "page": 17,
               "ymin": 74,
               "xmin": 0,
-              "ymax": 150,
-              "xmax": 1000
+              "ymax": 148,
+              "xmax": 1000,
+              "box_1000": [
+                74,
+                0,
+                148,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q11/part_c.png",
           "width": 1654,
-          "height": 197
+          "height": 193
         },
         {
           "label": "d",
           "marks": 4,
+          "topics": [
+            "1.2"
+          ],
           "slices": [
             {
               "page": 17,
-              "ymin": 500,
+              "ymin": 505,
               "xmin": 0,
-              "ymax": 570,
-              "xmax": 1000
+              "ymax": 565,
+              "xmax": 1000,
+              "box_1000": [
+                505,
+                0,
+                565,
+                1000
+              ]
             }
           ],
           "asset_path": "questions/q11/part_d.png",
           "width": 1654,
-          "height": 184
+          "height": 160
         }
       ],
       "total_question_marks": 11,
-      "composite_asset_path": "questions/q11/full.png",
-      "composite_width": 1654,
-      "composite_height": 892,
       "topics": [
         "1.1",
         "1.2"
-      ]
+      ],
+      "composite_asset_path": "questions/q11/full.png",
+      "composite_width": 1654,
+      "composite_height": 818
     }
   ],
   "question_index": [
@@ -604,17 +841,5 @@
       "total_marks": 11,
       "composite_asset": "questions/q11/full.png"
     }
-  ],
-  "verification": {
-    "status": "verified",
-    "verified_at": "2026-10-10T09:51:01.435810+00:00",
-    "audit_checklist": {
-      "mark_sum_match": true,
-      "clipping_free": true,
-      "workspace_excised": true,
-      "question_numbers_intact": true
-    },
-    "extracted_marks": 75,
-    "balance_check": false
-  }
+  ]
 }

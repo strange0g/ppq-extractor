@@ -16,7 +16,13 @@
         "ymin": 74,
         "xmin": 0,
         "ymax": 129,
-        "xmax": 1000
+        "xmax": 1000,
+        "box_1000": [
+          74,
+          0,
+          129,
+          1000
+        ]
       }
     ]
   },
@@ -28,18 +34,26 @@
       "isolated_asset_path": "part_a.png",
       "dimensions": {
         "width": 1654,
-        "height": 99
+        "height": 88
       },
       "slices": [
         {
           "page": 14,
-          "ymin": 131,
+          "ymin": 134,
           "xmin": 0,
-          "ymax": 165,
-          "xmax": 1000
+          "ymax": 163,
+          "xmax": 1000,
+          "box_1000": [
+            134,
+            0,
+            163,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.6"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -51,18 +65,26 @@
       "isolated_asset_path": "part_b.png",
       "dimensions": {
         "width": 1654,
-        "height": 197
+        "height": 193
       },
       "slices": [
         {
           "page": 15,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 150,
-          "xmax": 1000
+          "ymax": 148,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            148,
+            1000
+          ]
         }
       ],
-      "topics": [],
+      "topics": [
+        "1.6"
+      ],
       "context_dependencies": [
         "preamble"
       ]
@@ -72,7 +94,7 @@
     "asset_path": "full.png",
     "dimensions": {
       "width": 1654,
-      "height": 484
+      "height": 469
     }
   },
   "taxonomy": {

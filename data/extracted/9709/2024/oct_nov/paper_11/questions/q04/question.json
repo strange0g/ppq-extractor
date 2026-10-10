@@ -25,11 +25,17 @@
           "ymin": 74,
           "xmin": 0,
           "ymax": 115,
-          "xmax": 1000
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            115,
+            1000
+          ]
         }
       ],
       "topics": [
-        "1.6"
+        "1.1"
       ],
       "context_dependencies": []
     }
@@ -43,7 +49,7 @@
   },
   "taxonomy": {
     "topics": [
-      "1.6"
+      "1.1"
     ],
     "has_diagram": false
   }

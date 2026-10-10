@@ -17,15 +17,21 @@
       "isolated_asset_path": "part.png",
       "dimensions": {
         "width": 1654,
-        "height": 665
+        "height": 583
       },
       "slices": [
         {
           "page": 4,
           "ymin": 74,
           "xmin": 0,
-          "ymax": 350,
-          "xmax": 1000
+          "ymax": 315,
+          "xmax": 1000,
+          "box_1000": [
+            74,
+            0,
+            315,
+            1000
+          ]
         }
       ],
       "topics": [
@@ -38,13 +44,13 @@
     "asset_path": "full.png",
     "dimensions": {
       "width": 1654,
-      "height": 665
+      "height": 583
     }
   },
   "taxonomy": {
     "topics": [
       "1.4"
     ],
-    "has_diagram": false
+    "has_diagram": true
   }
 }

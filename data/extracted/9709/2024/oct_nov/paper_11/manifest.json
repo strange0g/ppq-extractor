@@ -568,5 +568,15 @@
       "total_marks": 11,
       "composite_asset": "questions/q11/full.png"
     }
-  ]
+  ],
+  "verification": {
+    "status": "verified",
+    "verified_at": "2026-10-10T09:51:01.435810+00:00",
+    "audit_checklist": {
+      "mark_sum_match": true,
+      "clipping_free": true,
+      "workspace_excised": true,
+      "question_numbers_intact": true
+    }
+  }
 }

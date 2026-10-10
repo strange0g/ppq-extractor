@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "1.0",
-  "updated_at": "2026-10-10T09:46:16.379433+00:00",
+  "updated_at": "2026-10-10T09:51:06.861542+00:00",
   "summary": {
     "total": 18,
     "unprocessed": 16,
-    "extracted": 1,
-    "verified": 1,
+    "extracted": 0,
+    "verified": 2,
     "needs_rework": 0
   },
   "papers": [
@@ -18,14 +18,14 @@
       "component": 1,
       "variant": 1,
       "source_pdf": "9709/2024/2024 Nov/9709_w24_qp_11.pdf",
-      "status": "extracted",
+      "status": "verified",
       "total_pages": 20,
       "mode": "write_in",
       "expected_marks": 75,
       "extracted_marks": 75,
       "output_dir": "data/extracted/9709/2024/oct_nov/paper_11",
       "extracted_at": "2026-10-10T09:46:16.379433+00:00",
-      "verified_at": null,
+      "verified_at": "2026-10-10T09:51:06.861542+00:00",
       "verifier_notes": null,
       "session_slug": "oct_nov"
     },

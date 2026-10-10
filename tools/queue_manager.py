@@ -301,11 +301,13 @@ def scan_queue(source_dir: str | Path, queue_file: str | Path) -> dict[str, Any]
                         meta["verifier_notes"] = old.get("verifier_notes")
                     discovered_papers.append(meta)
 
-    # Sort deterministically by (year, session, component, variant, id)
+    # Sort deterministically latest to oldest (descending year, descending session, component, variant, id)
+    # Session ordering: 'w' (winter/nov) > 's' (summer/june) > 'm' (march)
+    session_order = {"w": 3, "s": 2, "m": 1}
     discovered_papers.sort(
         key=lambda p: (
-            p["year"],
-            p["session"],
+            -p["year"],
+            -session_order.get(p["session"], 0),
             p["component"],
             p["variant"] if p["variant"] is not None else -1,
             p["id"],

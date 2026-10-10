@@ -53,27 +53,24 @@ Inspect each Question Package under `<output_dir>/questions/q{NN}/`:
 - **Clipping Check**: Ensure mathematical superscripts, exponents, fractions, square root bars, and right-margin mark brackets (`[X]`) are NOT clipped at top or bottom boundaries.
 - **Answer Workspace Check**: Ensure dotted, dashed, or ruled answer workspace lines are completely excised from the bottom of every crop.
 
-### 5. Check 4: Metadata & Question Package Descriptor Integrity
-Audit item-level metadata in `<output_dir>/questions/q{NN}/question.json` and root `<output_dir>/manifest.json`:
-- Ensure each `question.json` is valid JSON and declares:
-  - `question_number`, `paper_id`, and `total_marks` matching the sum of its parts.
-  - `preamble`: `present: bool`, `asset_path`, `dimensions`, and `slices`.
-  - `parts`: array of parts with `part_id`, `label`, `marks`, `isolated_asset_path`, `dimensions`, and `context_dependencies: ["preamble"]` when preamble is present.
-  - `composite`: `asset_path: "full.png"` and dimensions.
-  - `taxonomy`: valid `topics` referencing official codes from `data/syllabus/<syllabus>.json` (e.g., `["1.1"]`, `["1.7"]`).
-- Ensure `<output_dir>/manifest.json` contains a valid `question_index` linking every Question Package (`package_path: "questions/q{NN}/question.json"`).
+### 5. Check 4: Metadata Authority & Unified Relational Database Synchronization
+Audit item-level metadata in root `<output_dir>/manifest.json` and verify Question Package media assets:
+- **Manifest Indexing**: Ensure `<output_dir>/manifest.json` contains a valid `question_index` linking every Question Package directory (`package_path: "questions/q{NN}"`) and Composite Question Image (`composite_asset: "questions/q{NN}/full.png"`).
+- **question.json Deprecation**: Note that per-question `question.json` descriptors are deprecated in favor of unified SQLite database indexing. If legacy `--emit-question-json` was enabled, ensure each `question.json` matches its Question Package assets; otherwise, confirm Question Packages contain pure media assets.
+- **Syllabus Topic Codes**: Ensure official curriculum topic codes (e.g. `["1.1"]`, `["1.7"]`) from `data/syllabus/<syllabus>.json` are properly assigned across questions and Question Parts in `manifest.json`.
 
 ### 6. Autonomous Repair Loop
 When minor discrepancies or coordinate flaws are identified:
 - **Adjust Coordinates**: Edit `ymin` or `ymax` in `<output_dir>/manifest.json`:
   - Decrease `ymin` (apply upward safety buffer) if a question number, exponent, or formula top is clipped.
   - Adjust `ymax` to eliminate stray dotted answer lines, or extend `ymax` if standalone question prompt/mark bracket was cut short.
-- **Add Missing Items**: If a question part was omitted during extraction, insert its slice definition into `manifest.json`.
+- **Add Missing Items**: If a Question Part was omitted during extraction, insert its slice definition into `manifest.json`.
 - **Re-run Cropping Tool**:
   ```bash
   uv run ppq-crop --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
   ```
-- **Re-audit Question Packages**: Confirm the re-generated crops, `question.json` files, and `manifest.json` are complete, clean, and unclipped.
+  Re-running `ppq-crop` automatically synchronizes repaired slices and updated topic classifications into the SQLite database with idempotent replace semantics.
+- **Re-audit Question Packages**: Confirm the re-generated crops, media assets, and `manifest.json` (and any legacy `question.json` files if present) are complete, clean, and unclipped.
 
 ### 7. State Finalization & Queue Update
 

@@ -11,11 +11,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from PIL import Image, ImageDraw
+
+_DEFAULT_DB_SENTINEL = object()
 
 
 def detect_page_margin_trim(page_img: Image.Image) -> Tuple[int, int]:
@@ -318,6 +321,7 @@ def crop_and_stitch(
     spacing: int = 20,
     trim_margins: bool = True,
     emit_question_json: bool = False,
+    db_path: str | Path | sqlite3.Connection | None | object = _DEFAULT_DB_SENTINEL,
 ) -> Dict[str, Any]:
     """Process question slices from manifest.json and write cropped Question Packages.
 
@@ -328,6 +332,8 @@ def crop_and_stitch(
       - question.json (legacy metadata descriptor, only when emit_question_json=True)
 
     Updates manifest.json with question_index and package metadata.
+    Automatically synchronizes manifest records into SQLite when db_path is provided
+    or when .pipeline/queue.db is present.
 
     Args:
         manifest_path: Path to paper manifest.json.
@@ -337,9 +343,11 @@ def crop_and_stitch(
         spacing: White separator divider between stitched parts (default: 20).
         trim_margins: Automatically trim outer margin warning text (default: True).
         emit_question_json: Emit legacy atomic question.json descriptor per question package (default: False).
+        db_path: SQLite database path or connection to sync into. Defaults to .pipeline/queue.db if present.
+                 Pass None or empty string to skip database synchronization.
 
     Returns:
-        Summary dict containing crops metadata and updated manifest.
+        Summary dict containing crops metadata, updated manifest, and optional db_sync summary.
     """
     manifest_file = Path(manifest_path).resolve()
     if not manifest_file.is_file():
@@ -600,6 +608,26 @@ def crop_and_stitch(
     manifest_data["question_index"] = question_index
     manifest_file.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
 
+    # Ingest / synchronize manifest records into SQLite database
+    target_db: str | Path | sqlite3.Connection | None = None
+    if db_path is _DEFAULT_DB_SENTINEL:
+        default_candidate = Path(".pipeline/queue.db")
+        if default_candidate.is_file():
+            target_db = default_candidate
+    elif db_path is not None:
+        if isinstance(db_path, (str, Path)):
+            s_val = str(db_path).strip()
+            if s_val and s_val.lower() not in ("none", "null", "false"):
+                target_db = Path(s_val) if isinstance(db_path, str) else db_path
+        else:
+            target_db = db_path
+
+    db_sync_result = None
+    if target_db is not None:
+        from tools.db.sync import sync_manifest_to_db
+
+        db_sync_result = sync_manifest_to_db(manifest_file, db_path=target_db)
+
     return {
         "status": "success",
         "manifest_path": str(manifest_file),
@@ -607,6 +635,7 @@ def crop_and_stitch(
         "crops": generated_crops,
         "questions_processed": len(questions),
         "manifest": manifest_data,
+        "db_sync": db_sync_result,
     }
 
 
@@ -655,10 +684,22 @@ def main(argv: list[str] | None = None) -> None:
         default=False,
         help="Emit legacy atomic question.json descriptor per question package",
     )
+    parser.add_argument(
+        "--db-path",
+        default=_DEFAULT_DB_SENTINEL,
+        help="Target SQLite database path for ingestion (default: .pipeline/queue.db if present)",
+    )
+    parser.add_argument(
+        "--no-db",
+        action="store_true",
+        default=False,
+        help="Skip database synchronization",
+    )
 
     args = parser.parse_args(argv)
 
     try:
+        target_db_arg = None if args.no_db else args.db_path
         summary = crop_and_stitch(
             manifest_path=args.manifest,
             pages_dir=args.pages_dir,
@@ -667,6 +708,7 @@ def main(argv: list[str] | None = None) -> None:
             spacing=args.spacing,
             trim_margins=not args.no_trim_margins,
             emit_question_json=args.emit_question_json,
+            db_path=target_db_arg,
         )
         print(json.dumps(summary, indent=2))
     except Exception as exc:

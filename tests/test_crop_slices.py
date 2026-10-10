@@ -14,9 +14,16 @@ from PIL import Image, ImageDraw
 try:
     from tools.crop_slices import (
         _format_part_naming,
-        crop_and_stitch,
         translate_coordinates,
     )
+    from tools.crop_slices import (
+        crop_and_stitch as _orig_crop_and_stitch,
+    )
+
+    def crop_and_stitch(*args, **kwargs):
+        kwargs.setdefault("db_path", None)
+        return _orig_crop_and_stitch(*args, **kwargs)
+
 except ImportError:
     crop_and_stitch = None
     translate_coordinates = None
@@ -513,6 +520,7 @@ class TestCropSlices(unittest.TestCase):
             "10",
             "--spacing",
             "20",
+            "--no-db",
         ]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(proc.returncode, 0, f"CLI exited with error: {proc.stderr}")

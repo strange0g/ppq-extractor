@@ -50,27 +50,29 @@ As the direct multimodal LLM agent (without inner LLM API loops):
   - **Capture Question Parts & Marks**: Capture each question part (`a`, `b`, `i`, etc.) with its corresponding right-margin mark tag.
   - **Syllabus Topic Classification**: Attribute official Cambridge Syllabus Topic Codes from `data/syllabus/<syllabus>.json` (e.g. `["1.1"]` for Quadratics, `["1.6"]` for Series) to each question and question part.
 
-### 4. Manifest Assembly & Question Package Generation
-Assemble the per-paper `<output_dir>/manifest.json` cataloging questions, preamble slices, part slices, and question metadata (including topic classifications).
+### 4. Manifest Assembly, Question Package Generation & Database Sync
+Assemble the per-paper `<output_dir>/manifest.json` cataloging questions, preamble slices, Question Part slices, and question metadata (including topic classifications).
 
-Execute the deterministic cropping tool to generate modular Question Packages:
+Execute the deterministic cropping tool to generate modular Question Packages and automatically synchronize records into the SQLite database:
 ```bash
 uv run ppq-crop --manifest "<output_dir>/manifest.json" --pages-dir "<output_dir>/pages" --out-dir "<output_dir>"
 ```
 
-This populates modular Question Packages under `<output_dir>/questions/q{NN}/`:
+Upon successful crop generation, `ppq-crop` automatically synchronizes manifest records, question items, Question Parts, coordinate slices, and Syllabus Topic Codes into the unified SQLite database (`.pipeline/queue.db`).
+
+This populates modular Question Packages under `<output_dir>/questions/q{NN}/` containing pure media assets:
 - **Multipart Questions**:
   - `preamble.png`: Question Preamble Image (when preamble is present).
   - `part_{label}.png`: Isolated Question Part Images strictly without prepending preamble.
   - `full.png`: Composite Question Image stitching preamble and all parts with 20px white divider spacing and student answer workspaces excised.
 - **Standalone Questions**:
   - `full.png`: Unified question image without redundant part or preamble crops.
-- **Metadata**:
-  - `question.json`: Atomic item-level metadata descriptor declaring question ID, total marks, preamble metadata, and Question Parts with `context_dependencies: ["preamble"]` when preamble is present.
+- **Metadata Descriptors & question.json Deprecation**:
+  - Item-level metadata is persisted and indexed directly in the unified SQLite relational database and paper-level `manifest.json`. Generation of redundant atomic `question.json` descriptors per Question Package is deprecated by default (available only via `--emit-question-json` for legacy compatibility).
 
 Verify Question Package integrity:
-- Confirm `<output_dir>/manifest.json` is updated with `question_index` linking each question package.
-- Confirm every question package directory `<output_dir>/questions/q{NN}/` contains valid non-empty images and a valid `question.json`.
+- Confirm `<output_dir>/manifest.json` is updated with `question_index` referencing package directories (`questions/q{NN}`) and composite assets (`questions/q{NN}/full.png`).
+- Confirm every question package directory `<output_dir>/questions/q{NN}/` contains valid non-empty media images (`full.png`, `part_{label}.png`, `preamble.png`).
 
 ### 5. Queue Ledger Update & State Finalization
 Calculate the total extracted marks across all questions:

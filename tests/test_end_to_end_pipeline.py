@@ -27,6 +27,7 @@ import numpy as np
 from PIL import Image
 
 from tools.crop_slices import crop_and_stitch
+from tools.db.repository import QuestionRepository
 from tools.pdf_to_images import render_pdf_to_images
 from tools.queue_manager import (
     get_next_paper,
@@ -508,6 +509,8 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.source_dir = self.root / "source_pdf"
         self.source_dir.mkdir(parents=True, exist_ok=True)
         self.queue_file = self.root / ".pipeline" / "queue.json"
+        self.queue_db = self.root / ".pipeline" / "queue.db"
+        self.queue_db.parent.mkdir(parents=True, exist_ok=True)
 
         # Locate sample PDF
         self.sample_pdf_path = find_sample_pdf()
@@ -593,9 +596,14 @@ class TestEndToEndPipeline(unittest.TestCase):
             out_dir=output_dir,
             pad=10,
             spacing=20,
+            db_path=self.queue_db,
         )
         self.assertEqual(crop_summary["status"], "success")
         self.assertEqual(crop_summary["questions_processed"], 10)
+        self.assertIn("db_sync", crop_summary)
+        self.assertIsNotNone(crop_summary["db_sync"])
+        self.assertEqual(crop_summary["db_sync"]["paper_id"], "9709_w24_qp_12")
+        self.assertTrue(self.queue_db.is_file())
 
         # -------------------------------------------------------------
         # Step 5: Question 1 numeral invariant & safety buffer verification
@@ -861,6 +869,24 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertIsNotNone(final_paper["extracted_at"])
         self.assertIsNotNone(final_paper["verified_at"])
         self.assertEqual(final_paper["extracted_marks"], 75)
+
+        # -------------------------------------------------------------
+        # Step 11: Query SQLite Question Bank via QuestionRepository
+        # -------------------------------------------------------------
+        with QuestionRepository(self.queue_db) as repo:
+            db_questions = repo.query_questions(paper_id="9709_w24_qp_12")
+            self.assertEqual(len(db_questions), 10)
+
+            # Check Question 10 parts and metadata
+            q10 = repo.get_question("9709_w24_qp_12_q10")
+            self.assertIsNotNone(q10)
+            self.assertEqual(len(q10["parts"]), 3)
+            self.assertEqual(q10["total_marks"], 10)
+            self.assertTrue(q10["has_preamble"])
+
+            # Query Question Parts directly
+            parts = repo.query_parts(paper_id="9709_w24_qp_12")
+            self.assertGreater(len(parts), 10)
 
 
 if __name__ == "__main__":

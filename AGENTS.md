@@ -61,7 +61,7 @@ The extraction pipeline runs autonomously with two decoupled agent roles:
 - Invokes multimodal vision capabilities on content pages using [`prompts/vision_slicing.md`](prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
 - Enforces the question number invariant: `ymin` strictly encompasses question numerals with an upward safety buffer of at least 15 normalized units (~15px).
 - Excises dotted, lined, or dashed answer workspace lines.
-- Assembles per-paper `manifest.json` and runs `ppq-crop` / `tools.crop_slices` to generate modular Question Packages (`questions/q{NN}/`) containing standalone Question Preamble Images (`preamble.png`), isolated Question Part Images (`part_{label}.png`), Composite Question Images (`full.png`), and atomic metadata descriptors (`question.json`).
+- Assembles per-paper `manifest.json` and runs `ppq-crop` / `tools.crop_slices` to generate modular Question Packages (`questions/q{NN}/`) containing pure media assets (standalone Question Preamble Images `preamble.png`, isolated Question Part Images `part_{label}.png`, Composite Question Images `full.png`) and automatically synchronizes manifest records into the SQLite database. Legacy `question.json` descriptors are deprecated by default.
 - Updates queue status to `extracted` with `--extracted-marks` via `ppq-queue` / `tools.queue_manager`.
 - Detailed system instructions: [`prompts/extractor_agent.md`](prompts/extractor_agent.md).
 
@@ -70,8 +70,8 @@ The extraction pipeline runs autonomously with two decoupled agent roles:
 - Audits mathematical mark-sum invariants against syllabus benchmarks (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Stats).
 - Audits Question Packages for question number visibility (especially Question 1) to verify question numerals were not clipped or excised.
 - Performs page-by-page visual reconciliation to verify sequence completeness and ensure no mathematical symbols, exponents, or mark tags are clipped.
-- Validates the integrity of per-question `question.json` descriptors and paper-level `manifest.json`.
-- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs `tools.crop_slices` when minor flaws exist.
+- Validates the integrity of paper-level `manifest.json` and SQLite synchronization (noting legacy per-question `question.json` descriptors are deprecated in favor of unified database indexing).
+- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs `tools.crop_slices` (which idempotently re-syncs database tables and regenerates image crops) when minor flaws exist.
 - Approves verified papers or flags unresolvable defects as `needs_rework` via `tools.queue_manager`.
 - Detailed system instructions: [`prompts/verifier_agent.md`](prompts/verifier_agent.md).
 
@@ -108,14 +108,25 @@ Agents must execute the canonical CLI entry points via `uv run` instead of writi
 
 3. **Full-Width Cropping & Question Package Generation (`tools.crop_slices`)**:
    ```bash
-   uv run ppq-crop --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
-   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
+   uv run ppq-crop --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR> [--db-path <DB_PATH>]
+   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR> [--db-path <DB_PATH>]
    ```
    Outputs Question Packages under `<OUTPUT_DIR>/questions/q{NN}/`:
    - `preamble.png` (optional stem context)
    - `part_{label}.png` (isolated Question Part Images)
    - `full.png` (Composite Question Image)
-   - `question.json` (atomic item metadata descriptor)
+   - `question.json` (deprecated by default, available via `--emit-question-json`)
+
+4. **Curriculum Topic & Question Querying (`tools.db.repository`)**:
+   ```bash
+   # Query questions by Syllabus Topic Code
+   uv run python -m tools.db.repository query --topic 1.1 --component 1 --format table
+   uv run ppq-queue query --topic 1.1 --component 1 --format table
+
+   # Query Question Parts by Syllabus Topic Code
+   uv run python -m tools.db.repository query --topic 1.1 --parts --format json
+   uv run ppq-queue query --topic 1.1 --parts --format json
+   ```
 
 ---
 

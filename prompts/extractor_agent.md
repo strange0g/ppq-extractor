@@ -86,6 +86,6 @@ uv run ppq-queue update --id "<paper_id>" --status extracted --extracted-marks <
 ### 6. Atomic Git Commit
 Stage the paper assets, Question Packages, manifest, and updated queue ledger, then commit with the conventional commit prefix:
 ```bash
-git add "<output_dir>" .pipeline/queue.json
+git add "<output_dir>" .pipeline/queue.*
 git commit -m "feat(extractor): extract <paper_id>"
 ```

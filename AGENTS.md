@@ -11,7 +11,7 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - Never invoke ad-hoc pip commands or global python interpreters directly.
 2. **Quality Guardrails**:
    - Execute `./scripts/check.sh` before completing any code changes.
-   - All 42 deterministic tests must pass with zero functional regressions.
+   - All 84 deterministic tests must pass with zero functional regressions.
 3. **Strict Domain Language**:
    - Adhere strictly to the canonical vocabulary in [`GLOSSARY.md`](GLOSSARY.md).
    - Use **Question Package** (`questions/q{NN}/`), never "question folder" or "problem bundle".
@@ -48,7 +48,7 @@ Agents must navigate the repository using context pointers rather than loading u
 - [`docs/architecture.md`](docs/architecture.md): Deep-dive pipeline lifecycle, two-tier Question Package model, coordinate spaces, and margin trimming.
 - [`docs/development.md`](docs/development.md): CLI reference flags, test suite breakdown, and developer tools.
 - [`GLOSSARY.md`](GLOSSARY.md): Authoritative domain definitions and terminology rules.
-- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming, `0003` Standalone Question Packages & workflow sync).
+- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming, `0003` Standalone Question Packages & workflow sync, `0004` Unified relational database & asset storage).
 
 ---
 

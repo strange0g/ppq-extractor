@@ -84,7 +84,7 @@ When minor discrepancies or coordinate flaws are identified:
    ```
 3. Stage changes and commit atomically:
    ```bash
-   git add "<output_dir>" .pipeline/queue.json
+   git add "<output_dir>" .pipeline/queue.*
    git commit -m "feat(verifier): verify <paper_id>"
    ```
 
@@ -96,6 +96,6 @@ If the paper exhibits structural defects that cannot be repaired autonomously:
    ```
 2. Stage and commit:
    ```bash
-   git add .pipeline/queue.json
+   git add .pipeline/queue.*
    git commit -m "fix(verifier): flag <paper_id> needs_rework"
    ```

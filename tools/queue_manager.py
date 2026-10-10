@@ -286,43 +286,15 @@ class QueueDatabase:
         self.init_db()
 
     def get_connection(self) -> sqlite3.Connection:
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self.db_path), timeout=10.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode = WAL;")
-        conn.execute("PRAGMA busy_timeout = 10000;")
-        conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
+        from tools.db.connection import get_connection
+
+        return get_connection(self.db_path, auto_migrate=False)
 
     def init_db(self) -> None:
+        from tools.db.migrations import run_migrations
+
         with self.get_connection() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS papers (
-                    id TEXT PRIMARY KEY,
-                    syllabus TEXT NOT NULL,
-                    year INTEGER NOT NULL,
-                    session TEXT NOT NULL,
-                    session_slug TEXT NOT NULL,
-                    component INTEGER NOT NULL,
-                    variant INTEGER,
-                    source_pdf TEXT NOT NULL,
-                    status TEXT NOT NULL CHECK(status IN ('unprocessed', 'extracted', 'verified', 'needs_rework')),
-                    total_pages INTEGER NOT NULL,
-                    mode TEXT NOT NULL,
-                    expected_marks INTEGER NOT NULL,
-                    extracted_marks INTEGER,
-                    output_dir TEXT NOT NULL,
-                    extracted_at TEXT,
-                    verified_at TEXT,
-                    verifier_notes TEXT
-                );
-            """)
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(status);"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_papers_order ON papers(year DESC, session DESC, component ASC, variant ASC);"
-            )
+            run_migrations(conn)
 
     def get_paper(self, paper_id: str) -> dict[str, Any] | None:
         with self.get_connection() as conn:
@@ -375,73 +347,81 @@ class QueueDatabase:
             )
 
         now_iso = datetime.now(timezone.utc).isoformat()
+        from tools.db.connection import atomic_transaction
+
         with self.get_connection() as conn:
-            cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
-            existing = cur.fetchone()
-            if existing is None:
-                raise KeyError(f"Paper '{paper_id}' not found in database.")
+            with atomic_transaction(conn):
+                cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
+                existing = cur.fetchone()
+                if existing is None:
+                    raise KeyError(f"Paper '{paper_id}' not found in database.")
 
-            extracted_at = existing["extracted_at"]
-            verified_at = existing["verified_at"]
-            verifier_notes = notes if notes is not None else existing["verifier_notes"]
-            final_marks = (
-                extracted_marks
-                if extracted_marks is not None
-                else existing["extracted_marks"]
-            )
+                extracted_at = existing["extracted_at"]
+                verified_at = existing["verified_at"]
+                verifier_notes = (
+                    notes if notes is not None else existing["verifier_notes"]
+                )
+                final_marks = (
+                    extracted_marks
+                    if extracted_marks is not None
+                    else existing["extracted_marks"]
+                )
 
-            if status == "extracted":
-                extracted_at = now_iso
-            elif status == "verified":
-                verified_at = now_iso
+                if status == "extracted":
+                    extracted_at = now_iso
+                elif status == "verified":
+                    verified_at = now_iso
 
-            conn.execute(
-                """
-                UPDATE papers
-                SET status = ?,
-                    extracted_at = ?,
-                    verified_at = ?,
-                    verifier_notes = ?,
-                    extracted_marks = ?
-                WHERE id = ?;
-                """,
-                (
-                    status,
-                    extracted_at,
-                    verified_at,
-                    verifier_notes,
-                    final_marks,
-                    paper_id,
-                ),
-            )
-            cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
-            return dict(cur.fetchone())
+                conn.execute(
+                    """
+                    UPDATE papers
+                    SET status = ?,
+                        extracted_at = ?,
+                        verified_at = ?,
+                        verifier_notes = ?,
+                        extracted_marks = ?
+                    WHERE id = ?;
+                    """,
+                    (
+                        status,
+                        extracted_at,
+                        verified_at,
+                        verifier_notes,
+                        final_marks,
+                        paper_id,
+                    ),
+                )
+                cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
+                return dict(cur.fetchone())
 
     def upsert_papers(self, papers: list[dict[str, Any]]) -> int:
         count = 0
+        from tools.db.connection import atomic_transaction
+
         with self.get_connection() as conn:
-            for p in papers:
-                conn.execute(
-                    """
-                    INSERT INTO papers (
-                        id, syllabus, year, session, session_slug, component, variant,
-                        source_pdf, status, total_pages, mode, expected_marks,
-                        extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
-                    ) VALUES (
-                        :id, :syllabus, :year, :session, :session_slug, :component, :variant,
-                        :source_pdf, :status, :total_pages, :mode, :expected_marks,
-                        :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
+            with atomic_transaction(conn):
+                for p in papers:
+                    conn.execute(
+                        """
+                        INSERT INTO papers (
+                            id, syllabus, year, session, session_slug, component, variant,
+                            source_pdf, status, total_pages, mode, expected_marks,
+                            extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
+                        ) VALUES (
+                            :id, :syllabus, :year, :session, :session_slug, :component, :variant,
+                            :source_pdf, :status, :total_pages, :mode, :expected_marks,
+                            :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
+                        )
+                        ON CONFLICT(id) DO UPDATE SET
+                            source_pdf = excluded.source_pdf,
+                            total_pages = excluded.total_pages,
+                            mode = excluded.mode,
+                            expected_marks = excluded.expected_marks,
+                            output_dir = excluded.output_dir;
+                        """,
+                        p,
                     )
-                    ON CONFLICT(id) DO UPDATE SET
-                        source_pdf = excluded.source_pdf,
-                        total_pages = excluded.total_pages,
-                        mode = excluded.mode,
-                        expected_marks = excluded.expected_marks,
-                        output_dir = excluded.output_dir;
-                    """,
-                    p,
-                )
-                count += 1
+                    count += 1
         return count
 
     def get_summary(self) -> dict[str, int]:
@@ -481,21 +461,24 @@ class QueueDatabase:
         papers = data.get("papers", [])
         for p in papers:
             normalize_paper_entry(p)
+        from tools.db.connection import atomic_transaction
+
         with self.get_connection() as conn:
-            conn.executemany(
-                """
-                INSERT OR REPLACE INTO papers (
-                    id, syllabus, year, session, session_slug, component, variant,
-                    source_pdf, status, total_pages, mode, expected_marks,
-                    extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
-                ) VALUES (
-                    :id, :syllabus, :year, :session, :session_slug, :component, :variant,
-                    :source_pdf, :status, :total_pages, :mode, :expected_marks,
-                    :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
-                );
-                """,
-                papers,
-            )
+            with atomic_transaction(conn):
+                conn.executemany(
+                    """
+                    INSERT OR REPLACE INTO papers (
+                        id, syllabus, year, session, session_slug, component, variant,
+                        source_pdf, status, total_pages, mode, expected_marks,
+                        extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
+                    ) VALUES (
+                        :id, :syllabus, :year, :session, :session_slug, :component, :variant,
+                        :source_pdf, :status, :total_pages, :mode, :expected_marks,
+                        :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
+                    );
+                    """,
+                    papers,
+                )
         return len(papers)
 
 

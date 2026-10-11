@@ -15,8 +15,8 @@ Past paper question preparation traditionally requires laborious manual cropping
 **PPQ Extractor** solves this by establishing a decoupled, autonomous extraction and audit pipeline:
 - **Two-Tier Question Packages**: Shared preambles are extracted once into a standalone Question Preamble Image (`preamble.png`), while Question Parts are cropped into isolated Question Part Images (`part_{label}.png`) without visual redundancy.
 - **Composite Question Images**: Stitched question overviews (`full.png`) unite preamble and parts while excising candidate handwriting answer workspaces.
-- **Machine-Readable Taxonomy**: Atomic `question.json` metadata descriptors and paper-level `manifest.json` indices track mark allocations, slice coordinates, context dependencies, and official Cambridge Syllabus Topic Codes (e.g. `1.1 Quadratics`, `1.7 Differentiation`).
-- **Autonomous Agent Verification**: Two decoupled autonomous agent roles—**Extractor Agent** and **Verifier Agent**—operate asynchronously via a local Processing Queue (`.pipeline/queue.json`).
+- **Unified Relational Question Bank**: High-performance SQLite database (`.pipeline/queue.db`) and paper-level `manifest.json` indices track mark allocations, slice coordinates, context dependencies, and official Cambridge Syllabus Topic Codes (e.g. `1.1 Quadratics`, `1.7 Differentiation`) with sub-10ms query access.
+- **Autonomous Agent Verification**: Two decoupled autonomous agent roles—**Extractor Agent** and **Verifier Agent**—operate asynchronously via a local Processing Queue (`.pipeline/queue.db`).
 - **Automatic Margin Trimming**: Outer margin artifacts such as vertical *"DO NOT WRITE IN THIS MARGIN"* warnings are automatically detected and trimmed without clipping mathematical notation or mark brackets.
 
 ---
@@ -36,6 +36,7 @@ ppq-extractor/
 │   └── check.sh               # CI / pre-commit verification suite (ruff & unittest)
 ├── tests/                     # Deterministic unit and end-to-end pipeline test suite
 ├── tools/                     # Core deterministic CLI utilities and pipeline modules
+│   ├── db/                    # Relational SQLite database connection, migrations, and repository
 │   ├── crop_slices.py         # Full-width slicing, stitching, and package generator
 │   ├── pdf_to_images.py       # High-speed PDF page rendering utility
 │   ├── pdf_utils.py           # Robust PDF page count and binary inspection helpers
@@ -86,9 +87,9 @@ Verify that your environment, linting rules, and tests pass:
 
 The repository installs three primary console entry points:
 
-### 1. Queue Manager (`ppq-queue`)
+### 1. Queue Manager & Question Bank Query (`ppq-queue`)
 
-Manages the file-based Processing Queue (`.pipeline/queue.json`):
+Manages the Processing Queue ledger (`.pipeline/queue.db`) and queries the question bank:
 
 ```bash
 # Scan a directory to discover Question Paper PDFs and update queue ledger
@@ -102,6 +103,12 @@ uv run ppq-queue show --id 9709_w24_qp_11
 
 # Print concise queue summary table
 uv run ppq-queue summary
+
+# Query questions by Cambridge Syllabus Topic Code
+uv run ppq-queue query --topic 1.1 --component 1 --format table
+
+# Query Question Parts by Syllabus Topic Code
+uv run ppq-queue query --topic 1.1 --parts --format json
 ```
 
 ### 2. High-Speed PDF Rendering (`ppq-render`)
@@ -114,7 +121,7 @@ uv run ppq-render --pdf 9709/2024/2024\ Nov/9709_w24_qp_11.pdf --out-dir data/ou
 
 ### 3. Slicing & Question Package Generator (`ppq-crop`)
 
-Executes full-width vertical cropping and composite stitching from a verified `manifest.json`:
+Executes full-width vertical cropping, composite stitching, and automatic SQLite database synchronization from a verified `manifest.json`:
 
 ```bash
 uv run ppq-crop --manifest data/output/9709_w24_qp_11/manifest.json --pages-dir data/output/9709_w24_qp_11/pages --out-dir data/output/9709_w24_qp_11
@@ -124,7 +131,7 @@ Generated Question Packages are saved under `questions/q{NN}/`:
 - `preamble.png`: Optional isolated Question Preamble Image
 - `part_{label}.png`: Isolated Question Part Images
 - `full.png`: Stitched Composite Question Image (answer workspaces excised)
-- `question.json`: Atomic item descriptor with marks and taxonomy metadata
+- `question.json`: Legacy metadata descriptor (deprecated by default, available via `--emit-question-json`)
 
 ---
 

@@ -11,7 +11,7 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - Never invoke ad-hoc pip commands or global python interpreters directly.
 2. **Quality Guardrails**:
    - Execute `./scripts/check.sh` before completing any code changes.
-   - All 42 deterministic tests must pass with zero functional regressions.
+   - All 84 deterministic tests must pass with zero functional regressions.
 3. **Strict Domain Language**:
    - Adhere strictly to the canonical vocabulary in [`GLOSSARY.md`](GLOSSARY.md).
    - Use **Question Package** (`questions/q{NN}/`), never "question folder" or "problem bundle".
@@ -29,6 +29,21 @@ This document governs autonomous agents operating in [`ppq-extractor`](file:///h
    - Agents run in scheduled hourly autonomous containers without spawning unmanaged inner LLM API loops.
 6. **Workflow & Prompt Synchronization**:
    - Any changes to execution tools, scripts, CLI flags, or workflows (such as canonical `uv run` commands) must be kept strictly synchronized across [`AGENTS.md`](AGENTS.md), [`prompts/extractor_agent.md`](prompts/extractor_agent.md), [`prompts/verifier_agent.md`](prompts/verifier_agent.md), and [`prompts/vision_slicing.md`](prompts/vision_slicing.md). Prompt files must never use legacy bare interpreters or unsynchronized command flags.
+7. **Strict Wayfinder Invariant (Planning, Not Doing)**:
+   - When operating in or managing a Wayfinder session (any session referencing a `wayfinder:map` or working a `wayfinder:*` ticket), agents must strictly produce decisions, not deliverables.
+   - Writing production implementation code, editing application tools/modules, or modifying production database tables inside a Wayfinder session is strictly forbidden.
+   - Every ticket resolves to an architectural or domain decision recorded in an issue comment, never code merged into `main`.
+   - `wayfinder:task` tickets are strictly for prerequisite discovery/unblocking legwork, never implementation work.
+   - An agent must never declare a map complete or suggest transitioning to downstream phases (`/spec`, `/tickets`, `/implement`) while any child ticket on the frontier remains open.
+   - When all tickets are resolved and fog is cleared, hand off to the engineering flow: `/to-spec` -> `/to-tickets` -> `/implement`.
+8. **Continuous Documentation Synchronization**:
+   - Whenever code, database schemas, CLI commands or flags, domain terminology, or architectural flows are modified or introduced, all relevant documentation files must be updated in lockstep within the same commit/PR.
+   - Specifically ensure synchronization across:
+     - [`README.md`](README.md): system overview, directory layout, quickstart commands, and CLI references.
+     - [`docs/architecture.md`](docs/architecture.md) & [`docs/development.md`](docs/development.md): dataflow diagrams, test suite breakdowns, and usage flags.
+     - [`docs/adr/`](docs/adr/): document non-trivial architectural decisions with a new ADR.
+     - [`prompts/`](prompts/): extractor, verifier, and vision slicing system prompts.
+   - Code changes that alter observable behavior, commands, or data models must never be finalized without updating their corresponding documentation.
 
 ---
 
@@ -41,7 +56,7 @@ Agents must navigate the repository using context pointers rather than loading u
 - [`docs/architecture.md`](docs/architecture.md): Deep-dive pipeline lifecycle, two-tier Question Package model, coordinate spaces, and margin trimming.
 - [`docs/development.md`](docs/development.md): CLI reference flags, test suite breakdown, and developer tools.
 - [`GLOSSARY.md`](GLOSSARY.md): Authoritative domain definitions and terminology rules.
-- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming, `0003` Standalone Question Packages & workflow sync).
+- [`docs/adr/`](docs/adr/): Architectural Decision Records (`0001` Question Package layout, `0002` Syllabus taxonomy & margin trimming, `0003` Standalone Question Packages & workflow sync, `0004` Unified relational database & asset storage).
 
 ---
 
@@ -54,7 +69,7 @@ The extraction pipeline runs autonomously with two decoupled agent roles:
 - Invokes multimodal vision capabilities on content pages using [`prompts/vision_slicing.md`](prompts/vision_slicing.md) to locate question/part vertical bounds on a normalized `0–1000` vertical scale.
 - Enforces the question number invariant: `ymin` strictly encompasses question numerals with an upward safety buffer of at least 15 normalized units (~15px).
 - Excises dotted, lined, or dashed answer workspace lines.
-- Assembles per-paper `manifest.json` and runs `ppq-crop` / `tools.crop_slices` to generate modular Question Packages (`questions/q{NN}/`) containing standalone Question Preamble Images (`preamble.png`), isolated Question Part Images (`part_{label}.png`), Composite Question Images (`full.png`), and atomic metadata descriptors (`question.json`).
+- Assembles per-paper `manifest.json` and runs `ppq-crop` / `tools.crop_slices` to generate modular Question Packages (`questions/q{NN}/`) containing pure media assets (standalone Question Preamble Images `preamble.png`, isolated Question Part Images `part_{label}.png`, Composite Question Images `full.png`) and automatically synchronizes manifest records into the SQLite database. Legacy `question.json` descriptors are deprecated by default.
 - Updates queue status to `extracted` with `--extracted-marks` via `ppq-queue` / `tools.queue_manager`.
 - Detailed system instructions: [`prompts/extractor_agent.md`](prompts/extractor_agent.md).
 
@@ -63,8 +78,8 @@ The extraction pipeline runs autonomously with two decoupled agent roles:
 - Audits mathematical mark-sum invariants against syllabus benchmarks (e.g. 75 marks for Pure 1/Pure 3, 50 marks for Mechanics/Stats).
 - Audits Question Packages for question number visibility (especially Question 1) to verify question numerals were not clipped or excised.
 - Performs page-by-page visual reconciliation to verify sequence completeness and ensure no mathematical symbols, exponents, or mark tags are clipped.
-- Validates the integrity of per-question `question.json` descriptors and paper-level `manifest.json`.
-- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs `tools.crop_slices` when minor flaws exist.
+- Validates the integrity of paper-level `manifest.json` and SQLite synchronization (noting legacy per-question `question.json` descriptors are deprecated in favor of unified database indexing).
+- Autonomously repairs coordinates in `manifest.json` (applying upward safety buffers) and re-runs `tools.crop_slices` (which idempotently re-syncs database tables and regenerates image crops) when minor flaws exist.
 - Approves verified papers or flags unresolvable defects as `needs_rework` via `tools.queue_manager`.
 - Detailed system instructions: [`prompts/verifier_agent.md`](prompts/verifier_agent.md).
 
@@ -101,14 +116,25 @@ Agents must execute the canonical CLI entry points via `uv run` instead of writi
 
 3. **Full-Width Cropping & Question Package Generation (`tools.crop_slices`)**:
    ```bash
-   uv run ppq-crop --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
-   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR>
+   uv run ppq-crop --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR> [--db-path <DB_PATH>]
+   python3 -m tools.crop_slices --manifest <MANIFEST_JSON> --pages-dir <PAGES_DIR> --out-dir <OUTPUT_DIR> [--db-path <DB_PATH>]
    ```
    Outputs Question Packages under `<OUTPUT_DIR>/questions/q{NN}/`:
    - `preamble.png` (optional stem context)
    - `part_{label}.png` (isolated Question Part Images)
    - `full.png` (Composite Question Image)
-   - `question.json` (atomic item metadata descriptor)
+   - `question.json` (deprecated by default, available via `--emit-question-json`)
+
+4. **Curriculum Topic & Question Querying (`tools.db.repository`)**:
+   ```bash
+   # Query questions by Syllabus Topic Code
+   uv run python -m tools.db.repository query --topic 1.1 --component 1 --format table
+   uv run ppq-queue query --topic 1.1 --component 1 --format table
+
+   # Query Question Parts by Syllabus Topic Code
+   uv run python -m tools.db.repository query --topic 1.1 --parts --format json
+   uv run ppq-queue query --topic 1.1 --parts --format json
+   ```
 
 ---
 

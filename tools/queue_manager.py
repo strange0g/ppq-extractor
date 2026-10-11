@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import re
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -277,6 +278,210 @@ def save_queue(queue_file: str | Path, queue_data: dict[str, Any]) -> None:
     os.replace(tmp_path, path)
 
 
+class QueueDatabase:
+    """SQLite database ledger for PPQ Extractor queue management."""
+
+    def __init__(self, db_path: str | Path = ".pipeline/queue.db") -> None:
+        self.db_path = Path(db_path).resolve()
+        self.init_db()
+
+    def get_connection(self) -> sqlite3.Connection:
+        from tools.db.connection import get_connection
+
+        return get_connection(self.db_path, auto_migrate=False)
+
+    def init_db(self) -> None:
+        from tools.db.migrations import run_migrations
+
+        with self.get_connection() as conn:
+            run_migrations(conn)
+
+    def get_paper(self, paper_id: str) -> dict[str, Any] | None:
+        with self.get_connection() as conn:
+            cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def get_next_paper(self, role: str) -> dict[str, Any] | None:
+        with self.get_connection() as conn:
+            if role == "extractor":
+                query = """
+                    SELECT * FROM papers
+                    WHERE status IN ('needs_rework', 'unprocessed')
+                    ORDER BY CASE status WHEN 'needs_rework' THEN 1 ELSE 2 END,
+                             year DESC,
+                             CASE session WHEN 'w' THEN 3 WHEN 's' THEN 2 WHEN 'm' THEN 1 ELSE 0 END DESC,
+                             component ASC,
+                             COALESCE(variant, -1) ASC,
+                             id ASC
+                    LIMIT 1;
+                """
+            elif role == "verifier":
+                query = """
+                    SELECT * FROM papers
+                    WHERE status = 'extracted'
+                    ORDER BY year DESC,
+                             CASE session WHEN 'w' THEN 3 WHEN 's' THEN 2 WHEN 'm' THEN 1 ELSE 0 END DESC,
+                             component ASC,
+                             COALESCE(variant, -1) ASC,
+                             id ASC
+                    LIMIT 1;
+                """
+            else:
+                return None
+
+            cur = conn.execute(query)
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def update_paper_status(
+        self,
+        paper_id: str,
+        status: str,
+        notes: str | None = None,
+        extracted_marks: int | None = None,
+    ) -> dict[str, Any]:
+        if status not in VALID_STATUSES:
+            raise ValueError(
+                f"Invalid status: '{status}'. Valid statuses are: {VALID_STATUSES}"
+            )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        from tools.db.connection import atomic_transaction
+
+        with self.get_connection() as conn:
+            with atomic_transaction(conn):
+                cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
+                existing = cur.fetchone()
+                if existing is None:
+                    raise KeyError(f"Paper '{paper_id}' not found in database.")
+
+                extracted_at = existing["extracted_at"]
+                verified_at = existing["verified_at"]
+                verifier_notes = (
+                    notes if notes is not None else existing["verifier_notes"]
+                )
+                final_marks = (
+                    extracted_marks
+                    if extracted_marks is not None
+                    else existing["extracted_marks"]
+                )
+
+                if status == "extracted":
+                    extracted_at = now_iso
+                elif status == "verified":
+                    verified_at = now_iso
+
+                conn.execute(
+                    """
+                    UPDATE papers
+                    SET status = ?,
+                        extracted_at = ?,
+                        verified_at = ?,
+                        verifier_notes = ?,
+                        extracted_marks = ?
+                    WHERE id = ?;
+                    """,
+                    (
+                        status,
+                        extracted_at,
+                        verified_at,
+                        verifier_notes,
+                        final_marks,
+                        paper_id,
+                    ),
+                )
+                cur = conn.execute("SELECT * FROM papers WHERE id = ?;", (paper_id,))
+                return dict(cur.fetchone())
+
+    def upsert_papers(self, papers: list[dict[str, Any]]) -> int:
+        count = 0
+        from tools.db.connection import atomic_transaction
+
+        with self.get_connection() as conn:
+            with atomic_transaction(conn):
+                for p in papers:
+                    conn.execute(
+                        """
+                        INSERT INTO papers (
+                            id, syllabus, year, session, session_slug, component, variant,
+                            source_pdf, status, total_pages, mode, expected_marks,
+                            extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
+                        ) VALUES (
+                            :id, :syllabus, :year, :session, :session_slug, :component, :variant,
+                            :source_pdf, :status, :total_pages, :mode, :expected_marks,
+                            :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
+                        )
+                        ON CONFLICT(id) DO UPDATE SET
+                            source_pdf = excluded.source_pdf,
+                            total_pages = excluded.total_pages,
+                            mode = excluded.mode,
+                            expected_marks = excluded.expected_marks,
+                            output_dir = excluded.output_dir;
+                        """,
+                        p,
+                    )
+                    count += 1
+        return count
+
+    def get_summary(self) -> dict[str, int]:
+        with self.get_connection() as conn:
+            cur = conn.execute("""
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'unprocessed' THEN 1 ELSE 0 END) as unprocessed,
+                    SUM(CASE WHEN status = 'extracted' THEN 1 ELSE 0 END) as extracted,
+                    SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) as verified,
+                    SUM(CASE WHEN status = 'needs_rework' THEN 1 ELSE 0 END) as needs_rework
+                FROM papers;
+            """)
+            row = cur.fetchone()
+            if not row:
+                return {
+                    "total": 0,
+                    "unprocessed": 0,
+                    "extracted": 0,
+                    "verified": 0,
+                    "needs_rework": 0,
+                }
+            return {
+                "total": row["total"] or 0,
+                "unprocessed": row["unprocessed"] or 0,
+                "extracted": row["extracted"] or 0,
+                "verified": row["verified"] or 0,
+                "needs_rework": row["needs_rework"] or 0,
+            }
+
+    def migrate_from_json(self, json_path: str | Path) -> int:
+        path = Path(json_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"JSON file '{json_path}' does not exist.")
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        papers = data.get("papers", [])
+        for p in papers:
+            normalize_paper_entry(p)
+        from tools.db.connection import atomic_transaction
+
+        with self.get_connection() as conn:
+            with atomic_transaction(conn):
+                conn.executemany(
+                    """
+                    INSERT OR REPLACE INTO papers (
+                        id, syllabus, year, session, session_slug, component, variant,
+                        source_pdf, status, total_pages, mode, expected_marks,
+                        extracted_marks, output_dir, extracted_at, verified_at, verifier_notes
+                    ) VALUES (
+                        :id, :syllabus, :year, :session, :session_slug, :component, :variant,
+                        :source_pdf, :status, :total_pages, :mode, :expected_marks,
+                        :extracted_marks, :output_dir, :extracted_at, :verified_at, :verifier_notes
+                    );
+                    """,
+                    papers,
+                )
+        return len(papers)
+
+
 def scan_queue(source_dir: str | Path, queue_file: str | Path) -> dict[str, Any]:
     """Scan source_dir for Question Papers and merge into queue_file."""
     existing_queue = load_queue(queue_file)
@@ -391,6 +596,24 @@ def update_paper_status(
     return queue_data
 
 
+def _resolve_backend(args: argparse.Namespace) -> tuple[str, Path]:
+    """Resolve whether to use sqlite db or json file backend."""
+    db_path = getattr(args, "db_path", None)
+    if db_path is not None:
+        return "db", Path(db_path)
+    q_file = getattr(args, "queue_file", None)
+    if q_file:
+        p = Path(q_file)
+        if p.suffix == ".db":
+            return "db", p
+        if p.suffix == ".json":
+            return "json", p
+    default_db = Path(".pipeline/queue.db")
+    if default_db.is_file():
+        return "db", default_db
+    return "json", Path(".pipeline/queue.json")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main CLI entrypoint for queue_manager."""
     parser = argparse.ArgumentParser(
@@ -398,6 +621,22 @@ def main(argv: list[str] | None = None) -> int:
         description="Master Queue Ledger & Pipeline Manager",
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
+
+    # Subcommand: migrate-json
+    migrate_parser = subparsers.add_parser(
+        "migrate-json",
+        help="Migrate JSON ledger to SQLite database (.pipeline/queue.db)",
+    )
+    migrate_parser.add_argument(
+        "--json-file",
+        default=".pipeline/queue.json",
+        help="Source JSON ledger path (default: .pipeline/queue.json)",
+    )
+    migrate_parser.add_argument(
+        "--db-path",
+        default=".pipeline/queue.db",
+        help="Target SQLite database path (default: .pipeline/queue.db)",
+    )
 
     # Subcommand: scan
     scan_parser = subparsers.add_parser(
@@ -412,6 +651,11 @@ def main(argv: list[str] | None = None) -> int:
         "--queue-file",
         default=".pipeline/queue.json",
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
+    )
+    scan_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="SQLite database ledger path (e.g. .pipeline/queue.db)",
     )
 
     # Subcommand: next
@@ -428,6 +672,11 @@ def main(argv: list[str] | None = None) -> int:
         "--queue-file",
         default=".pipeline/queue.json",
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
+    )
+    next_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="SQLite database ledger path (e.g. .pipeline/queue.db)",
     )
 
     # Subcommand: update
@@ -455,6 +704,11 @@ def main(argv: list[str] | None = None) -> int:
         default=".pipeline/queue.json",
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
     )
+    update_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="SQLite database ledger path (e.g. .pipeline/queue.db)",
+    )
 
     # Subcommand: show
     show_parser = subparsers.add_parser(
@@ -468,6 +722,11 @@ def main(argv: list[str] | None = None) -> int:
         default=".pipeline/queue.json",
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
     )
+    show_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="SQLite database ledger path (e.g. .pipeline/queue.db)",
+    )
 
     # Subcommand: summary (or status)
     summary_parser = subparsers.add_parser(
@@ -480,86 +739,264 @@ def main(argv: list[str] | None = None) -> int:
         default=".pipeline/queue.json",
         help="Queue ledger JSON path (default: .pipeline/queue.json)",
     )
+    summary_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="SQLite database ledger path (e.g. .pipeline/queue.db)",
+    )
+
+    # Subcommand: query
+    query_parser = subparsers.add_parser(
+        "query",
+        help="Query questions or parts from the SQLite question bank by topic/metadata",
+    )
+    from tools.db.repository import add_query_arguments
+
+    add_query_arguments(query_parser, default_db_path=None)
 
     args = parser.parse_args(argv)
+    backend, target_path = _resolve_backend(args)
 
-    if args.subcommand == "scan":
-        queue_data = scan_queue(args.source_dir, args.queue_file)
-        summary = queue_data["summary"]
+    if args.subcommand == "migrate-json":
+        db = QueueDatabase(args.db_path)
+        count = db.migrate_from_json(args.json_file)
+        summary = db.get_summary()
+        print(f"Successfully migrated {count} papers to '{args.db_path}'.")
         print(
-            f"Scan complete. Total: {summary['total']}, "
-            f"Unprocessed: {summary['unprocessed']}, "
-            f"Extracted: {summary['extracted']}, "
-            f"Verified: {summary['verified']}, "
-            f"Needs rework: {summary['needs_rework']}"
+            f"Status Summary: Total={summary['total']}, "
+            f"Unprocessed={summary['unprocessed']}, "
+            f"Extracted={summary['extracted']}, "
+            f"Verified={summary['verified']}, "
+            f"Needs Rework={summary['needs_rework']}"
         )
         return 0
 
-    elif args.subcommand == "next":
-        queue_file = Path(args.queue_file)
-        if not queue_file.is_file():
-            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
-            return 1
-        queue_data = load_queue(args.queue_file)
-        paper = get_next_paper(queue_data, args.role)
-        if paper is None:
-            sys.stderr.write(f"No papers available for role '{args.role}'.\n")
-            return 1
-        print(json.dumps(paper, indent=2))
-        return 0
-
-    elif args.subcommand == "update":
-        queue_file = Path(args.queue_file)
-        if not queue_file.is_file():
-            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
-            return 1
-        queue_data = load_queue(args.queue_file)
-        try:
-            update_paper_status(
-                queue_data,
-                args.paper_id,
-                args.status,
-                notes=args.notes,
-                extracted_marks=args.extracted_marks,
+    elif args.subcommand == "scan":
+        if backend == "db":
+            db = QueueDatabase(target_path)
+            discovered_papers: list[dict[str, Any]] = []
+            for root, _, files in os.walk(str(args.source_dir)):
+                for fname in files:
+                    if "_qp_" in fname and fname.endswith(".pdf"):
+                        full_path = Path(root) / fname
+                        meta = parse_paper_metadata(full_path, args.source_dir)
+                        if meta:
+                            discovered_papers.append(meta)
+            session_order = {"w": 3, "s": 2, "m": 1}
+            discovered_papers.sort(
+                key=lambda p: (
+                    -p["year"],
+                    -session_order.get(p["session"], 0),
+                    p["component"],
+                    p["variant"] if p["variant"] is not None else -1,
+                    p["id"],
+                )
             )
-        except (KeyError, ValueError) as err:
-            sys.stderr.write(f"Update error: {err}\n")
-            return 1
+            db.upsert_papers(discovered_papers)
+            summary = db.get_summary()
+            print(
+                f"Scan complete. Total: {summary['total']}, "
+                f"Unprocessed: {summary['unprocessed']}, "
+                f"Extracted: {summary['extracted']}, "
+                f"Verified: {summary['verified']}, "
+                f"Needs rework: {summary['needs_rework']}"
+            )
+            return 0
+        else:
+            queue_data = scan_queue(args.source_dir, target_path)
+            summary = queue_data["summary"]
+            print(
+                f"Scan complete. Total: {summary['total']}, "
+                f"Unprocessed: {summary['unprocessed']}, "
+                f"Extracted: {summary['extracted']}, "
+                f"Verified: {summary['verified']}, "
+                f"Needs rework: {summary['needs_rework']}"
+            )
+            return 0
 
-        save_queue(args.queue_file, queue_data)
-        print(f"Paper '{args.paper_id}' successfully updated to '{args.status}'.")
-        return 0
-
-    elif args.subcommand == "show":
-        queue_file = Path(args.queue_file)
-        if not queue_file.is_file():
-            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
-            return 1
-        queue_data = load_queue(args.queue_file)
-        if args.paper_id:
-            paper = get_paper(queue_data, args.paper_id)
+    elif args.subcommand == "next":
+        if backend == "db":
+            if not target_path.is_file():
+                sys.stderr.write(f"Database file '{target_path}' does not exist.\n")
+                return 1
+            db = QueueDatabase(target_path)
+            paper = db.get_next_paper(args.role)
             if paper is None:
-                sys.stderr.write(f"Paper '{args.paper_id}' not found in queue.\n")
+                sys.stderr.write(f"No papers available for role '{args.role}'.\n")
                 return 1
             print(json.dumps(paper, indent=2))
             return 0
         else:
-            print(json.dumps(queue_data, indent=2))
+            if not target_path.is_file():
+                sys.stderr.write(f"Queue file '{target_path}' does not exist.\n")
+                return 1
+            queue_data = load_queue(target_path)
+            paper = get_next_paper(queue_data, args.role)
+            if paper is None:
+                sys.stderr.write(f"No papers available for role '{args.role}'.\n")
+                return 1
+            print(json.dumps(paper, indent=2))
             return 0
 
+    elif args.subcommand == "update":
+        if backend == "db":
+            if not target_path.is_file():
+                sys.stderr.write(f"Database file '{target_path}' does not exist.\n")
+                return 1
+            db = QueueDatabase(target_path)
+            try:
+                db.update_paper_status(
+                    args.paper_id,
+                    args.status,
+                    notes=args.notes,
+                    extracted_marks=args.extracted_marks,
+                )
+            except (KeyError, ValueError) as err:
+                sys.stderr.write(f"Update error: {err}\n")
+                return 1
+            print(f"Paper '{args.paper_id}' successfully updated to '{args.status}'.")
+            return 0
+        else:
+            if not target_path.is_file():
+                sys.stderr.write(f"Queue file '{target_path}' does not exist.\n")
+                return 1
+            queue_data = load_queue(target_path)
+            try:
+                update_paper_status(
+                    queue_data,
+                    args.paper_id,
+                    args.status,
+                    notes=args.notes,
+                    extracted_marks=args.extracted_marks,
+                )
+            except (KeyError, ValueError) as err:
+                sys.stderr.write(f"Update error: {err}\n")
+                return 1
+            save_queue(target_path, queue_data)
+            print(f"Paper '{args.paper_id}' successfully updated to '{args.status}'.")
+            return 0
+
+    elif args.subcommand == "show":
+        if backend == "db":
+            if not target_path.is_file():
+                sys.stderr.write(f"Database file '{target_path}' does not exist.\n")
+                return 1
+            db = QueueDatabase(target_path)
+            if args.paper_id:
+                paper = db.get_paper(args.paper_id)
+                if paper is None:
+                    sys.stderr.write(f"Paper '{args.paper_id}' not found in queue.\n")
+                    return 1
+                print(json.dumps(paper, indent=2))
+                return 0
+            else:
+                summary = db.get_summary()
+                print(
+                    json.dumps(
+                        {"database": str(target_path), "summary": summary}, indent=2
+                    )
+                )
+                return 0
+        else:
+            if not target_path.is_file():
+                sys.stderr.write(f"Queue file '{target_path}' does not exist.\n")
+                return 1
+            queue_data = load_queue(target_path)
+            if args.paper_id:
+                paper = get_paper(queue_data, args.paper_id)
+                if paper is None:
+                    sys.stderr.write(f"Paper '{args.paper_id}' not found in queue.\n")
+                    return 1
+                print(json.dumps(paper, indent=2))
+                return 0
+            else:
+                print(json.dumps(queue_data, indent=2))
+                return 0
+
     elif args.subcommand in ("summary", "status"):
-        queue_file = Path(args.queue_file)
-        if not queue_file.is_file():
-            sys.stderr.write(f"Queue file '{args.queue_file}' does not exist.\n")
+        if backend == "db":
+            if not target_path.is_file():
+                sys.stderr.write(f"Database file '{target_path}' does not exist.\n")
+                return 1
+            db = QueueDatabase(target_path)
+            summary = db.get_summary()
+            print("=== Processing Queue Status Summary ===")
+            print(f"Total Papers  : {summary.get('total', 0)}")
+            print(f"Unprocessed   : {summary.get('unprocessed', 0)}")
+            print(f"Extracted     : {summary.get('extracted', 0)}")
+            print(f"Verified      : {summary.get('verified', 0)}")
+            print(f"Needs Rework  : {summary.get('needs_rework', 0)}")
+            return 0
+        else:
+            if not target_path.is_file():
+                sys.stderr.write(f"Queue file '{target_path}' does not exist.\n")
+                return 1
+            queue_data = load_queue(target_path)
+            summary = queue_data.get("summary", {})
+            print("=== Processing Queue Status Summary ===")
+            print(f"Total Papers  : {summary.get('total', 0)}")
+            print(f"Unprocessed   : {summary.get('unprocessed', 0)}")
+            print(f"Extracted     : {summary.get('extracted', 0)}")
+            print(f"Verified      : {summary.get('verified', 0)}")
+            print(f"Needs Rework  : {summary.get('needs_rework', 0)}")
+            return 0
+
+    elif args.subcommand == "query":
+        from tools.db.repository import QuestionRepository, _format_table
+
+        db_file = (
+            target_path
+            if backend == "db"
+            else (Path(args.db_path) if args.db_path else Path(".pipeline/queue.db"))
+        )
+        if not db_file.is_file():
+            sys.stderr.write(f"Database file '{db_file}' does not exist.\n")
             return 1
-        queue_data = load_queue(args.queue_file)
-        summary = queue_data.get("summary", {})
-        print("=== Processing Queue Status Summary ===")
-        print(f"Total Papers  : {summary.get('total', 0)}")
-        print(f"Unprocessed   : {summary.get('unprocessed', 0)}")
-        print(f"Extracted     : {summary.get('extracted', 0)}")
-        print(f"Verified      : {summary.get('verified', 0)}")
-        print(f"Needs Rework  : {summary.get('needs_rework', 0)}")
+
+        with QuestionRepository(db_file) as repo:
+            if getattr(args, "parts", False):
+                results = repo.query_parts(
+                    topic_code=getattr(args, "topic_code", None),
+                    syllabus=getattr(args, "syllabus", None),
+                    component=getattr(args, "component", None),
+                    variant=getattr(args, "variant", None),
+                    year=getattr(args, "year", None),
+                    year_min=getattr(args, "year_min", None),
+                    year_max=getattr(args, "year_max", None),
+                    session=getattr(args, "session", None),
+                    min_marks=getattr(args, "marks_min", None),
+                    max_marks=getattr(args, "marks_max", None),
+                    paper_id=getattr(args, "paper_id", None),
+                    limit=getattr(args, "limit", None),
+                )
+                is_parts = True
+            else:
+                results = repo.query_questions(
+                    topic_code=getattr(args, "topic_code", None),
+                    syllabus=getattr(args, "syllabus", None),
+                    component=getattr(args, "component", None),
+                    variant=getattr(args, "variant", None),
+                    year=getattr(args, "year", None),
+                    year_min=getattr(args, "year_min", None),
+                    year_max=getattr(args, "year_max", None),
+                    session=getattr(args, "session", None),
+                    min_marks=getattr(args, "marks_min", None),
+                    max_marks=getattr(args, "marks_max", None),
+                    paper_id=getattr(args, "paper_id", None),
+                    limit=getattr(args, "limit", None),
+                )
+                is_parts = False
+
+            output_format = getattr(args, "format", "json")
+            if output_format == "json":
+                print(
+                    json.dumps(
+                        [r.to_dict() if hasattr(r, "to_dict") else r for r in results],
+                        indent=2,
+                    )
+                )
+            else:
+                print(_format_table(results, is_parts=is_parts))
         return 0
 
     return 0
